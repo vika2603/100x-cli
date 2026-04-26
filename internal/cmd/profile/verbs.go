@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,7 +29,7 @@ var (
 
 func validateProfileName(name string) error {
 	if name == "" {
-		return errors.New("--name is required")
+		return errors.New("profile name is required")
 	}
 	if len(name) > 32 {
 		return fmt.Errorf("profile name %q is longer than 32 chars", name)
@@ -60,59 +61,121 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.Name = args[0]
-			if err := runAdd(opts); err != nil {
+			payload, err := runAdd(opts)
+			if err != nil {
 				return err
 			}
-			payload := currentProfile{Name: opts.Name}
 			return f.IO.Render(payload, func() error {
-				f.IO.Println("saved profile", opts.Name)
+				f.IO.Println("saved profile", payload.Name)
 				return nil
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint (e.g. https://api.example.com)")
+	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint for --env; stored as a global env mapping")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client_id issued by the gateway")
-	c.Flags().StringVar(&opts.Env, "env", "live", "free-text env label (live | test | paper)")
+	c.Flags().StringVar(&opts.Env, "env", config.DefaultEnv, "environment label selecting the endpoint")
 	c.Flags().StringVar(&opts.Secret, "secret", "", "API secret (omit to be prompted)")
 	c.Flags().BoolVar(&opts.SetDefault, "default", false, "make this the default profile")
 	return c
 }
 
-func runAdd(opts *AddOptions) error {
+func runAdd(opts *AddOptions) (profileDetail, error) {
 	if err := validateProfileName(opts.Name); err != nil {
-		return err
+		return profileDetail{}, err
+	}
+	opts.Env = config.NormalizeEnv(opts.Env)
+	if err := fillAddInputs(opts); err != nil {
+		return profileDetail{}, err
 	}
 	cfg, err := config.Load()
 	if err != nil {
-		return err
-	}
-	secret := opts.Secret
-	if secret == "" {
-		secret, err = prompt.Secret("API secret")
-		if err != nil {
-			return err
-		}
+		return profileDetail{}, err
 	}
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]config.Profile{}
 	}
-	cfg.Profiles[opts.Name] = config.Profile{Endpoint: opts.Endpoint, ClientID: opts.ClientID, Env: opts.Env}
+	endpoint, err := resolveAddEndpoint(cfg, opts)
+	if err != nil {
+		return profileDetail{}, err
+	}
+	cfg.Profiles[opts.Name] = config.Profile{ClientID: opts.ClientID, Env: opts.Env}
 	if opts.SetDefault || cfg.Default == "" {
 		cfg.Default = opts.Name
 	}
 	if err := config.Save(cfg); err != nil {
-		return err
+		return profileDetail{}, err
 	}
-	if err := credential.Default().Save(opts.Name, secret); err != nil {
-		return err
+	if err := credential.Default().Save(opts.Name, opts.Secret); err != nil {
+		return profileDetail{}, err
+	}
+	return profileDetail{
+		Name: opts.Name, Endpoint: endpoint, ClientID: opts.ClientID, Env: opts.Env,
+		Current: cfg.Default == opts.Name, SecretStored: true,
+	}, nil
+}
+
+func fillAddInputs(opts *AddOptions) error {
+	var err error
+	if opts.ClientID == "" {
+		opts.ClientID, err = promptInput("Client ID", "client-id", "")
+		if err != nil {
+			return err
+		}
+	}
+	if opts.ClientID == "" {
+		return errors.New("profile add: client-id is required")
+	}
+	if opts.Secret == "" {
+		opts.Secret, err = prompt.Secret("API secret")
+		if errors.Is(err, prompt.ErrNoTTY) {
+			return errors.New("profile add: --secret is required in non-interactive mode")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if opts.Secret == "" {
+		return errors.New("profile add: secret is required")
 	}
 	return nil
+}
+
+func resolveAddEndpoint(cfg *config.Config, opts *AddOptions) (string, error) {
+	if endpoint := strings.TrimSpace(opts.Endpoint); endpoint != "" {
+		config.SetEndpoint(cfg, opts.Env, endpoint)
+	}
+	endpoint, err := config.EndpointForEnv(cfg, opts.Env)
+	if err == nil {
+		return endpoint, nil
+	}
+	endpoint, promptErr := prompt.Input("API endpoint for "+opts.Env, "https://api.example.com")
+	if errors.Is(promptErr, prompt.ErrNoTTY) {
+		return "", fmt.Errorf("profile add: --endpoint is required for env %q in non-interactive mode", opts.Env)
+	}
+	if promptErr != nil {
+		return "", promptErr
+	}
+	endpoint = strings.TrimSpace(endpoint)
+	if endpoint == "" {
+		return "", fmt.Errorf("profile add: endpoint is required for env %q", opts.Env)
+	}
+	config.SetEndpoint(cfg, opts.Env, endpoint)
+	return endpoint, nil
+}
+
+func promptInput(title, flagName, placeholder string) (string, error) {
+	value, err := prompt.Input(title, placeholder)
+	if errors.Is(err, prompt.ErrNoTTY) {
+		return "", fmt.Errorf("profile add: --%s is required in non-interactive mode", flagName)
+	}
+	return value, err
 }
 
 type profileListItem struct {
 	Name     string `json:"name"`
 	Env      string `json:"env"`
 	Endpoint string `json:"endpoint"`
+	ClientID string `json:"client_id"`
 	Current  bool   `json:"current"`
 }
 
@@ -146,8 +209,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			rows := make([]profileListItem, 0, len(names))
 			for _, n := range names {
 				p := cfg.Profiles[n]
+				endpoint, _ := config.EndpointForEnv(cfg, p.Env)
 				rows = append(rows, profileListItem{
-					Name: n, Env: p.Env, Endpoint: p.Endpoint, Current: n == cfg.Default,
+					Name: n, Env: config.NormalizeEnv(p.Env), Endpoint: endpoint, ClientID: p.ClientID, Current: n == cfg.Default,
 				})
 			}
 			return f.IO.Render(rows, func() error {
@@ -157,9 +221,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 					if r.Current {
 						current = "*"
 					}
-					out = append(out, []string{r.Name, r.Env, r.Endpoint, current})
+					out = append(out, []string{r.Name, r.Env, r.Endpoint, r.ClientID, current})
 				}
-				return f.IO.Table([]string{"Name", "Env", "Endpoint", "Current"}, out)
+				return f.IO.Table([]string{"Name", "Env", "Endpoint", "Client ID", "Current"}, out)
 			})
 		},
 	}
@@ -203,8 +267,12 @@ func newCmdShow(f *factory.Factory) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("profile %q not found", args[0])
 			}
+			endpoint, err := config.EndpointForEnv(cfg, p.Env)
+			if err != nil {
+				return fmt.Errorf("resolve endpoint for profile %q: %w", args[0], err)
+			}
 			payload := profileDetail{
-				Name: args[0], Endpoint: p.Endpoint, ClientID: p.ClientID, Env: p.Env,
+				Name: args[0], Endpoint: endpoint, ClientID: p.ClientID, Env: config.NormalizeEnv(p.Env),
 				Current: args[0] == cfg.Default, SecretStored: true,
 			}
 			return f.IO.Render(payload, func() error {

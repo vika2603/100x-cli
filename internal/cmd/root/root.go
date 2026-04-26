@@ -201,10 +201,14 @@ func populate(f *factory.Factory, gf *globalFlags) error {
 	if err != nil {
 		return fmt.Errorf("load credentials for profile %q: %w", name, err)
 	}
+	endpoint, err := config.EndpointForProfile(cfg, p)
+	if err != nil {
+		return fmt.Errorf("resolve endpoint for profile %q: %w", name, err)
+	}
 	f.ProfileName = name
 	f.Profile = p
 	f.Client = futures.New(futures.Options{
-		Endpoint:   p.Endpoint,
+		Endpoint:   endpoint,
 		ClientID:   p.ClientID,
 		ClientKey:  secret,
 		HTTPClient: &http.Client{Timeout: gf.timeout},
@@ -234,14 +238,18 @@ func populatePublic(f *factory.Factory, gf *globalFlags) error {
 	name, p, err := config.Resolve(cfg, gf.profile)
 	if err != nil {
 		if errors.Is(err, config.ErrNoProfile) {
-			return fmt.Errorf("no profile configured: run `100x init`")
+			return fmt.Errorf("no profile configured: run `100x profile add`")
 		}
 		return err
+	}
+	endpoint, err := config.EndpointForProfile(cfg, p)
+	if err != nil {
+		return fmt.Errorf("resolve endpoint for profile %q: %w", name, err)
 	}
 	f.ProfileName = name
 	f.Profile = p
 	f.Client = futures.New(futures.Options{
-		Endpoint:   p.Endpoint,
+		Endpoint:   endpoint,
 		HTTPClient: &http.Client{Timeout: gf.timeout},
 	})
 	return nil
