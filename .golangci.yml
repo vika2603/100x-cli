@@ -1,0 +1,36 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - gosec
+          - errcheck
+      - path: api/futures/fake/
+        # Fake's type-asserts are intentional and exhaustive; gocritic's
+        # "typeSwitchVar" suggestion would obscure rather than clarify.
+        text: "typeSwitchVar"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/vika2603/100x-cli

@@ -1,0 +1,79 @@
+version: 2
+
+project_name: 100x-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: 100x
+    binary: 100x
+    main: ./cmd/100x
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/vika2603/100x-cli/internal/version.Version={{.Version}}
+      - -X github.com/vika2603/100x-cli/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/vika2603/100x-cli/internal/version.BuildDate={{.Date}}
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - SECURITY.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: Bug fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Other
+      order: 999
+
+release:
+  draft: false
+  prerelease: auto
+  mode: replace
+  name_template: "v{{ .Version }}"
+  footer: |
+    Install with `go install github.com/vika2603/100x-cli/cmd/100x@v{{ .Version }}`
+    or download a prebuilt binary from the assets above.
