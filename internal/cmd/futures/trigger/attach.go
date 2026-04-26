@@ -196,18 +196,6 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 	})
 }
 
-func findOrderTrigger(ctx context.Context, c *futures.Client, symbol, orderID string, leg shared.Leg) (*futures.StopOrderItem, error) {
-	id, err := strconv.ParseInt(orderID, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid order id %q", orderID)
-	}
-	resp, err := c.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{Market: symbol, Page: 1, PageSize: 100})
-	if err != nil {
-		return nil, err
-	}
-	return findOrderTriggerIn(resp.Records, id, leg), nil
-}
-
 func readOrderAttachState(ctx context.Context, c *futures.Client, symbol, orderID string) (*futures.OrderItem, []futures.StopOrderItem, error) {
 	order, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: symbol, OrderID: orderID})
 	if err != nil {
