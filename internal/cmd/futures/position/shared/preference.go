@@ -4,36 +4,37 @@ package shared
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
 )
 
 // ParsePositionType accepts cross / isolated.
 func ParsePositionType(s string) (futures.PositionType, error) {
-	switch s {
-	case "cross", "Cross":
+	switch strings.ToUpper(s) {
+	case "CROSS":
 		return futures.PositionTypeCross, nil
-	case "isolated", "Isolated":
+	case "ISOLATED":
 		return futures.PositionTypeIsolated, nil
 	}
-	return 0, fmt.Errorf("unknown position type %q (want cross|isolated)", s)
+	return 0, fmt.Errorf("unknown mode %q (want ISOLATED|CROSS)", s)
 }
 
 // MergedPreferenceInput describes a partial preference update; missing fields
 // are filled in from the gateway's current state.
 type MergedPreferenceInput struct {
-	Market       string
+	Symbol       string
 	Leverage     string // empty = preserve
-	PositionType string // empty = preserve; else "cross"|"isolated"
+	PositionType string // empty = preserve; else "CROSS"|"ISOLATED"
 }
 
 // BuildAdjustMarketPreferenceReq performs the read-modify-send compensation:
 // the gateway's POST /setting/preference takes leverage AND position_type
 // together, so a partial CLI update reads current values first and merges.
 func BuildAdjustMarketPreferenceReq(ctx context.Context, c *futures.Client, in MergedPreferenceInput) (futures.AdjustMarketPreferenceReq, error) {
-	out := futures.AdjustMarketPreferenceReq{Market: in.Market}
+	out := futures.AdjustMarketPreferenceReq{Market: in.Symbol}
 	if in.Leverage == "" || in.PositionType == "" {
-		cur, err := c.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: in.Market})
+		cur, err := c.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: in.Symbol})
 		if err != nil {
 			return out, err
 		}
@@ -55,15 +56,4 @@ func BuildAdjustMarketPreferenceReq(ctx context.Context, c *futures.Client, in M
 		out.PositionType = pt
 	}
 	return out, nil
-}
-
-// ParseMarginAction accepts add / remove.
-func ParseMarginAction(s string) (futures.MarginAction, error) {
-	switch s {
-	case "add":
-		return futures.MarginActionAdd, nil
-	case "remove", "sub", "subtract":
-		return futures.MarginActionRemove, nil
-	}
-	return 0, fmt.Errorf("unknown margin action %q (want add|remove)", s)
 }

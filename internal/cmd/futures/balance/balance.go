@@ -3,6 +3,7 @@ package balance
 
 import (
 	"context"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -16,32 +17,45 @@ func NewCmdBalance(f *factory.Factory) *cobra.Command {
 		Use:   "balance",
 		Short: "Wallet balance and asset history",
 	}
-	c.AddCommand(newCmdGet(f), newCmdHistory(f))
+	c.AddCommand(newCmdList(f), newCmdHistory(f))
 	return c
 }
 
-// GetOptions captures the (empty) state of `balance get`.
-type GetOptions struct {
+// ListOptions captures the state of `balance list`.
+type ListOptions struct {
+	Currency string
+
 	Factory *factory.Factory
 }
 
-func newCmdGet(f *factory.Factory) *cobra.Command {
-	opts := &GetOptions{Factory: f}
+func newCmdList(f *factory.Factory) *cobra.Command {
+	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "get",
+		Use:   "list",
 		Short: "Show the current wallet snapshot",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGet(cmd.Context(), opts)
+			return runList(cmd.Context(), opts)
 		},
 	}
+	c.Flags().StringVar(&opts.Currency, "currency", "", "client-side currency filter")
 	return c
 }
 
-func runGet(ctx context.Context, opts *GetOptions) error {
+func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
 	resp, err := f.Client.Asset.AssetQuery(ctx, futures.AssetQueryReq{})
 	if err != nil {
 		return err
+	}
+	if opts.Currency != "" {
+		currency := strings.ToUpper(opts.Currency)
+		filtered := resp[:0]
+		for _, b := range resp {
+			if strings.ToUpper(b.Asset) == currency {
+				filtered = append(filtered, b)
+			}
+		}
+		resp = filtered
 	}
 	return f.IO.Render(resp, func() error {
 		rows := make([][]string, 0, len(resp))
@@ -54,8 +68,8 @@ func runGet(ctx context.Context, opts *GetOptions) error {
 
 // HistoryOptions captures the flag-bound state of `balance history`.
 type HistoryOptions struct {
-	Asset    string
-	Business string
+	Currency string
+	Type     string
 	Page     int
 	PageSize int
 
@@ -71,21 +85,25 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 			return runHistory(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Asset, "asset", "", "filter by asset (e.g. USDT)")
-	c.Flags().StringVar(&opts.Business, "business", "", "filter by business (deposit | withdraw | faucet)")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "filter by currency (e.g. USDT)")
+	c.Flags().StringVar(&opts.Type, "type", "", "filter by business type (deposit | withdraw | faucet)")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 50, "page size")
-	_ = c.RegisterFlagCompletionFunc("business", cobra.FixedCompletions([]string{"deposit", "withdraw", "faucet"}, cobra.ShellCompDirectiveNoFileComp))
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size")
+	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"deposit", "withdraw", "faucet"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
 func runHistory(ctx context.Context, opts *HistoryOptions) error {
 	f := opts.Factory
 	resp, err := f.Client.Asset.AssetHistory(ctx, futures.AssetHistoryReq{
-		Asset: opts.Asset, Business: opts.Business, Page: opts.Page, PageSize: opts.PageSize,
+		Asset: strings.ToUpper(opts.Currency), Business: opts.Type, Page: opts.Page, PageSize: opts.PageSize,
 	})
 	if err != nil {
 		return err
 	}
-	return f.IO.Render(resp, nil)
+	records := resp.Records
+	if records == nil {
+		records = []futures.AssetHistoryItem{}
+	}
+	return f.IO.Render(records, nil)
 }

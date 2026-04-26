@@ -14,9 +14,9 @@ import (
 
 // PreferenceOptions captures the flag-bound state of `position preference`.
 type PreferenceOptions struct {
-	Market       string
-	Leverage     string
-	PositionType string
+	Symbol   string
+	Leverage string
+	Mode     string
 
 	Factory *factory.Factory
 }
@@ -25,47 +25,53 @@ type PreferenceOptions struct {
 func NewCmdPreference(f *factory.Factory) *cobra.Command {
 	opts := &PreferenceOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "preference",
+		Use:   "preference <symbol>",
 		Short: "Read or update per-market preferences",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runPreference(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
 	c.Flags().StringVar(&opts.Leverage, "leverage", "", "leverage (preserve when omitted)")
-	c.Flags().StringVar(&opts.PositionType, "position-type", "", "cross | isolated (preserve when omitted)")
-	_ = c.MarkFlagRequired("market")
-	_ = c.RegisterFlagCompletionFunc("position-type", cobra.FixedCompletions([]string{"cross", "isolated"}, cobra.ShellCompDirectiveNoFileComp))
+	c.Flags().StringVar(&opts.Mode, "mode", "", "ISOLATED | CROSS (preserve when omitted)")
+	_ = c.RegisterFlagCompletionFunc("mode", cobra.FixedCompletions([]string{"ISOLATED", "CROSS"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
 func runPreference(ctx context.Context, opts *PreferenceOptions) error {
 	f := opts.Factory
-	if opts.Leverage == "" && opts.PositionType == "" {
-		resp, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Market})
+	if opts.Leverage == "" && opts.Mode == "" {
+		resp, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
 		if err != nil {
 			return err
 		}
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
-				{Key: "Market", Value: opts.Market},
+				{Key: "Symbol", Value: opts.Symbol},
 				{Key: "Leverage", Value: resp.Leverage},
-				{Key: "Position Type", Value: style.PositionType(f.IO, resp.PositionType)},
+				{Key: "Mode", Value: style.PositionType(f.IO, resp.PositionType)},
 			})
 		})
 	}
 	req, err := shared.BuildAdjustMarketPreferenceReq(ctx, f.Client, shared.MergedPreferenceInput{
-		Market: opts.Market, Leverage: opts.Leverage, PositionType: opts.PositionType,
+		Symbol: opts.Symbol, Leverage: opts.Leverage, PositionType: opts.Mode,
 	})
 	if err != nil {
 		return err
 	}
-	resp, err := f.Client.Setting.AdjustMarketPreference(ctx, req)
+	if _, err := f.Client.Setting.AdjustMarketPreference(ctx, req); err != nil {
+		return err
+	}
+	updated, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}
-	return f.IO.Render(resp, func() error {
-		f.IO.Println("preference updated for", opts.Market)
-		return nil
+	return f.IO.Render(updated, func() error {
+		return f.IO.Object([]output.KV{
+			{Key: "Symbol", Value: opts.Symbol},
+			{Key: "Leverage", Value: updated.Leverage},
+			{Key: "Mode", Value: style.PositionType(f.IO, updated.PositionType)},
+		})
 	})
 }

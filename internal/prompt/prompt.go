@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 )
 
@@ -43,6 +44,7 @@ func ConfirmDestructive(title string, yes bool) (bool, error) {
 		Affirmative("Yes").
 		Negative("No").
 		Value(&v).
+		WithTheme(dangerTheme()).
 		Run()
 	return v, err
 }
@@ -60,6 +62,7 @@ func Secret(title string) (string, error) {
 		Title(title).
 		EchoMode(huh.EchoModePassword).
 		Value(&v).
+		WithTheme(neutralTheme()).
 		Run()
 	return v, err
 }
@@ -74,6 +77,7 @@ func Input(title, placeholder string) (string, error) {
 		Title(title).
 		Placeholder(placeholder).
 		Value(&v).
+		WithTheme(neutralTheme()).
 		Run()
 	return v, err
 }
@@ -91,6 +95,7 @@ func Confirm(title string, def bool) (bool, error) {
 	err := huh.NewConfirm().
 		Title(title).
 		Value(&v).
+		WithTheme(neutralTheme()).
 		Run()
 	return v, err
 }
@@ -109,6 +114,91 @@ func Select(title string, options []string) (string, error) {
 		Title(title).
 		Options(opts...).
 		Value(&v).
+		WithTheme(neutralTheme()).
 		Run()
 	return v, err
+}
+
+// Tokyo Night palette (Night variant). Single source of truth so neutral and
+// danger themes stay coherent.
+var (
+	tnBgDark   = lipgloss.Color("#16161e")
+	tnBgHighlt = lipgloss.Color("#292e42")
+	tnFg       = lipgloss.Color("#c0caf5")
+	tnComment  = lipgloss.Color("#565f89")
+	tnBlue     = lipgloss.Color("#7aa2f7")
+	tnOrange   = lipgloss.Color("#ff9e64")
+	tnRed      = lipgloss.Color("#f7768e")
+)
+
+// neutralTheme is the calm default for non-destructive prompts.
+// Used by Confirm / Input / Secret / Select.
+func neutralTheme() *huh.Theme {
+	t := huh.ThemeBase()
+
+	var (
+		fg     = tnFg
+		muted  = tnComment
+		title  = tnFg
+		accent = tnBlue
+		btnBg  = tnBgHighlt
+		errFg  = tnRed
+	)
+
+	button := lipgloss.NewStyle().Padding(0, 1).MarginRight(1)
+
+	t.Focused.Base = lipgloss.NewStyle()
+	t.Focused.Card = t.Focused.Base
+	t.Focused.Title = t.Focused.Title.Foreground(title).Bold(true)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(title).Bold(true)
+	t.Focused.Description = t.Focused.Description.Foreground(muted)
+	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(errFg)
+	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(errFg)
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(accent)
+	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(accent)
+	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(accent)
+	t.Focused.Option = t.Focused.Option.Foreground(fg)
+	t.Focused.MultiSelectSelector = t.Focused.MultiSelectSelector.Foreground(accent)
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(accent)
+	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(accent).SetString("✓ ")
+	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(muted).SetString("• ")
+	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(fg)
+	t.Focused.FocusedButton = button.Foreground(tnBgDark).Background(accent).Bold(true)
+	t.Focused.Next = t.Focused.FocusedButton
+	t.Focused.BlurredButton = button.Foreground(muted).Background(btnBg)
+
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(accent)
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(muted)
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(accent)
+
+	t.Blurred = t.Focused
+	t.Blurred.Base = lipgloss.NewStyle()
+	t.Blurred.Card = t.Blurred.Base
+	t.Blurred.NextIndicator = lipgloss.NewStyle()
+	t.Blurred.PrevIndicator = lipgloss.NewStyle()
+
+	t.Group.Title = t.Focused.Title
+	t.Group.Description = t.Focused.Description
+	return t
+}
+
+// dangerTheme is reserved for ConfirmDestructive: red bold title plus an
+// amber focused button so the prompt reads as "warning" regardless of which
+// answer currently has focus.
+func dangerTheme() *huh.Theme {
+	t := neutralTheme()
+
+	button := lipgloss.NewStyle().Padding(0, 1).MarginRight(1)
+
+	t.Focused.Title = t.Focused.Title.Foreground(tnRed).Bold(true)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(tnRed).Bold(true)
+	t.Focused.FocusedButton = button.Foreground(tnBgDark).Background(tnOrange).Bold(true)
+	t.Focused.Next = t.Focused.FocusedButton
+
+	t.Blurred = t.Focused
+	t.Blurred.Base = lipgloss.NewStyle()
+	t.Blurred.Card = t.Blurred.Base
+
+	t.Group.Title = t.Focused.Title
+	return t
 }

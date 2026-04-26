@@ -25,6 +25,7 @@ func NewCmdOrder(f *factory.Factory) *cobra.Command {
 		NewCmdEdit(f),
 		NewCmdCancel(f),
 		NewCmdCancelAll(f),
+		NewCmdDeals(f),
 	)
 	return c
 }

@@ -23,8 +23,8 @@ func TestRunPlaceLimit(t *testing.T) {
 		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
 	}
 	opts := &PlaceOptions{
-		Type: "limit", Market: "BTCUSDT", Side: "buy",
-		Price: "70000", Quantity: "0.1",
+		Type: "limit", Symbol: "BTCUSDT", Side: "buy",
+		Price: "70000", Size: "0.1",
 		Factory: f,
 	}
 	if err := runPlace(context.Background(), opts); err != nil {
@@ -45,7 +45,7 @@ func TestRunPlaceMarketDryRun(t *testing.T) {
 		DryRun: true,
 	}
 	opts := &PlaceOptions{
-		Type: "market", Market: "BTCUSDT", Side: "sell", Quantity: "0.1",
+		Type: "market", Symbol: "BTCUSDT", Side: "sell", Size: "0.1",
 		Factory: f,
 	}
 	if err := runPlace(context.Background(), opts); err != nil {
@@ -65,7 +65,7 @@ func TestRunPlaceUnknownType(t *testing.T) {
 		Client: futures.NewWithDoer(fake.New()),
 		IO:     output.New(),
 	}
-	opts := &PlaceOptions{Type: "stop", Market: "BTC", Side: "buy", Quantity: "1", Factory: f}
+	opts := &PlaceOptions{Type: "stop", Symbol: "BTC", Side: "buy", Size: "1", Factory: f}
 	err := runPlace(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "unknown --type") {
 		t.Errorf("unexpected err: %v", err)

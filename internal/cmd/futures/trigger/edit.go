@@ -14,10 +14,10 @@ import (
 
 // EditOptions captures the flag-bound state of `trigger edit`.
 type EditOptions struct {
-	Market    string
-	OrderID   string
-	StopPrice string
-	PriceType string
+	Symbol       string
+	OrderID      string
+	TriggerPrice string
+	TriggerBy    string
 
 	Factory *factory.Factory
 }
@@ -26,37 +26,36 @@ type EditOptions struct {
 func NewCmdEdit(f *factory.Factory) *cobra.Command {
 	opts := &EditOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "edit <trigger-id>",
+		Use:   "edit <symbol> <trigger-id>",
 		Short: "Modify a pending trigger (attached SL/TP only)",
 		Long: "Modify a pending trigger.\n\n" +
 			"Only attached SL/TP triggers (created via `trigger attach`) can be edited.\n" +
 			"Standalone triggers (created via `trigger place`) cannot be edited; cancel\n" +
 			"and resubmit instead.",
-		Args: cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.OrderID = args[0]
+			opts.Symbol = args[0]
+			opts.OrderID = args[1]
 			return runEdit(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
-	c.Flags().StringVar(&opts.StopPrice, "stop-price", "", "new trigger price")
-	c.Flags().StringVar(&opts.PriceType, "price-type", "last", "last | index | mark")
-	_ = c.MarkFlagRequired("market")
-	_ = c.MarkFlagRequired("stop-price")
-	_ = c.RegisterFlagCompletionFunc("price-type", cobra.FixedCompletions([]string{"last", "index", "mark"}, cobra.ShellCompDirectiveNoFileComp))
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
+	_ = c.MarkFlagRequired("trigger-price")
+	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
-	priceType, err := shared.ParsePriceType(opts.PriceType)
+	priceType, err := shared.ParsePriceType(opts.TriggerBy)
 	if err != nil {
 		return err
 	}
 	f := opts.Factory
 	resp, err := f.Client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
-		Market:        opts.Market,
+		Market:        opts.Symbol,
 		StopOrderID:   opts.OrderID,
-		StopPrice:     opts.StopPrice,
+		StopPrice:     opts.TriggerPrice,
 		StopPriceType: priceType,
 	})
 	if err != nil {
@@ -64,10 +63,10 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 	}
 	return f.IO.Render(resp, func() error {
 		return f.IO.Object([]output.KV{
-			{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-			{Key: "Market", Value: opts.Market},
-			{Key: "Stop Price", Value: opts.StopPrice},
-			{Key: "Price Type", Value: opts.PriceType},
+			{Key: "Trigger ID", Value: strconv.FormatInt(resp.OrderID, 10)},
+			{Key: "Symbol", Value: opts.Symbol},
+			{Key: "Trigger Price", Value: opts.TriggerPrice},
+			{Key: "Trigger By", Value: opts.TriggerBy},
 		})
 	})
 }

@@ -94,3 +94,12 @@ func (r *Renderer) Println(args ...any) {
 	}
 	_, _ = fmt.Fprintln(r.Err, args...)
 }
+
+// Resultln writes one line of command result data to stdout.
+func (r *Renderer) Resultln(args ...any) error {
+	if r.Quiet {
+		return nil
+	}
+	_, err := fmt.Fprintln(r.Out, args...)
+	return err
+}

@@ -265,6 +265,13 @@ func (d *Doer) Post(_ context.Context, path string, in, out any) error {
 		return assignOut(out, futures.StopOrderEditResp{OrderID: id})
 
 	case "/open/api/v2/order/close/stop":
+		req := in.(futures.StopOrderCloseReq)
+		id, _ := strconv.ParseInt(req.OrderID, 10, 64)
+		if o, ok := d.orders[id]; ok {
+			o.StopLossPrice = req.StopLossPrice
+			o.TakeProfitPrice = req.TakeProfitPrice
+			d.orders[id] = o
+		}
 		return assignOut(out, futures.StopOrderCloseResp{})
 
 	case "/open/api/v2/order/limit/batch":

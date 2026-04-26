@@ -9,7 +9,7 @@ import (
 
 // AttachOrderInput describes one attach-leg-to-order operation.
 type AttachOrderInput struct {
-	Market     string
+	Symbol     string
 	OrderID    string
 	Leg        Leg
 	Price      string
@@ -26,11 +26,11 @@ type AttachOrderInput struct {
 // than echoed back, since echoing the empty value trips code=20012/20014
 // "stop loss/take profit price illegal".
 func BuildAttachOrderReq(ctx context.Context, c *futures.Client, in AttachOrderInput) (futures.StopOrderCloseReq, error) {
-	cur, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: in.Market, OrderID: in.OrderID})
+	cur, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: in.Symbol, OrderID: in.OrderID})
 	if err != nil {
 		return futures.StopOrderCloseReq{}, err
 	}
-	body := futures.StopOrderCloseReq{Market: in.Market, OrderID: in.OrderID}
+	body := futures.StopOrderCloseReq{Market: in.Symbol, OrderID: in.OrderID}
 	switch in.Leg {
 	case LegSL:
 		body.StopLossPrice = in.Price
@@ -58,7 +58,7 @@ func priceSet(s string) bool {
 
 // AttachPositionInput describes one attach-leg-to-position operation.
 type AttachPositionInput struct {
-	Market     string
+	Symbol     string
 	PositionID string
 	Leg        Leg
 	Price      string
@@ -69,11 +69,11 @@ type AttachPositionInput struct {
 // BuildAttachPositionReq assembles a futures.StopClosePositionReq, performing
 // the equivalent leg-preserve compensation for an open position.
 func BuildAttachPositionReq(ctx context.Context, c *futures.Client, in AttachPositionInput) (futures.StopClosePositionReq, error) {
-	pos, err := lookupPosition(ctx, c, in.Market, in.PositionID)
+	pos, err := lookupPosition(ctx, c, in.Symbol, in.PositionID)
 	if err != nil {
 		return futures.StopClosePositionReq{}, err
 	}
-	body := futures.StopClosePositionReq{Market: in.Market, PositionID: in.PositionID}
+	body := futures.StopClosePositionReq{Market: in.Symbol, PositionID: in.PositionID}
 	switch in.Leg {
 	case LegSL:
 		body.StopLossPrice = in.Price

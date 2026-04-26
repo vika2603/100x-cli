@@ -49,20 +49,27 @@ func classify(err error) (int, string) {
 	if err == nil {
 		return exit.OK, "ok"
 	}
+	var coded *exit.CodedError
+	if errors.As(err, &coded) {
+		return coded.Code, coded.Stable
+	}
 	if errors.Is(err, prompt.ErrDestructiveNoTTY) {
-		return exit.NonTTY, "non_tty"
+		return exit.Aborted, "cancelled"
 	}
 	if futures.IsAuth(err) {
 		return exit.Auth, "auth"
 	}
-	if futures.IsValidation(err) {
-		return exit.Validation, "validation"
+	if futures.IsRateLimited(err) {
+		return exit.RateLimited, "rate_limited"
+	}
+	if futures.IsServer(err) {
+		return exit.Network, "server"
+	}
+	if futures.IsBusiness(err) {
+		return exit.Business, "business"
 	}
 	if errors.Is(err, context.Canceled) {
-		// signal.NotifyContext cancels ctx on SIGINT/SIGTERM; map to the
-		// conventional 130 so cron and shell wrappers see a recognisable
-		// interruption rather than a generic abort.
-		return exit.Interrupted, "interrupted"
+		return exit.Aborted, "cancelled"
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return exit.Network, "network"

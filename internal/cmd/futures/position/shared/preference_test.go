@@ -24,7 +24,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("change leverage only preserves position type", func(t *testing.T) {
 		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
-			Market: "BTCUSDT", Leverage: "50",
+			Symbol: "BTCUSDT", Leverage: "50",
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -39,7 +39,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("change position type only preserves leverage", func(t *testing.T) {
 		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
-			Market: "BTCUSDT", PositionType: "cross",
+			Symbol: "BTCUSDT", PositionType: "CROSS",
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -54,7 +54,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("both fields skip the read", func(t *testing.T) {
 		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
-			Market: "BTCUSDT", Leverage: "100", PositionType: "cross",
+			Symbol: "BTCUSDT", Leverage: "100", PositionType: "CROSS",
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -66,22 +66,10 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("invalid position type errors", func(t *testing.T) {
 		_, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
-			Market: "BTCUSDT", PositionType: "garbage",
+			Symbol: "BTCUSDT", PositionType: "garbage",
 		})
 		if err == nil {
 			t.Fatal("expected error")
 		}
 	})
-}
-
-func TestParseMarginAction(t *testing.T) {
-	if a, err := ParseMarginAction("add"); err != nil || a != futures.MarginActionAdd {
-		t.Errorf("add => %v,%v", a, err)
-	}
-	if a, err := ParseMarginAction("remove"); err != nil || a != futures.MarginActionRemove {
-		t.Errorf("remove => %v,%v", a, err)
-	}
-	if _, err := ParseMarginAction("garbage"); err == nil {
-		t.Error("garbage should error")
-	}
 }

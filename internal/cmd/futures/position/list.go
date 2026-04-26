@@ -14,8 +14,7 @@ import (
 
 // ListOptions captures the flag-bound state of `position list`.
 type ListOptions struct {
-	Market   string
-	History  bool
+	Symbol   string
 	Page     int
 	PageSize int
 
@@ -27,34 +26,48 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "list",
-		Short: "List open or closed positions",
+		Short: "List open positions",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "filter by market")
-	c.Flags().BoolVar(&opts.History, "history", false, "list closed positions instead of open ones")
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 50, "page size")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "filter by symbol")
 	return c
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
-	if opts.History {
-		resp, err := f.Client.Position.PositionHistory(ctx, futures.PositionHistoryReq{
-			Market: opts.Market, Page: opts.Page, PageSize: opts.PageSize,
-		})
-		if err != nil {
-			return err
-		}
-		return f.IO.Render(resp, func() error { return printClosed(f.IO, resp.Records) })
-	}
-	resp, err := f.Client.Position.PendingPosition(ctx, futures.PendingPositionReq{Market: opts.Market})
+	resp, err := f.Client.Position.PendingPosition(ctx, futures.PendingPositionReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}
 	return f.IO.Render(resp, func() error { return printOpen(f.IO, resp) })
+}
+
+// NewCmdHistory builds the `position history` cobra command.
+func NewCmdHistory(f *factory.Factory) *cobra.Command {
+	opts := &ListOptions{Factory: f, Page: 1, PageSize: 50}
+	c := &cobra.Command{
+		Use:   "history",
+		Short: "List closed positions",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			resp, err := f.Client.Position.PositionHistory(cmd.Context(), futures.PositionHistoryReq{
+				Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
+			})
+			if err != nil {
+				return err
+			}
+			records := resp.Records
+			if records == nil {
+				records = []futures.FinishedPositionDetail{}
+			}
+			return f.IO.Render(records, func() error { return printClosed(f.IO, records) })
+		},
+	}
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "filter by symbol")
+	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size")
+	return c
 }
 
 func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error {
@@ -65,7 +78,7 @@ func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error 
 			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal, p.Roe,
 		})
 	}
-	return io.Table([]string{"ID", "Market", "Side", "Qty", "Entry", "Liq Price", "Margin", "uPnL", "ROE"}, out)
+	return io.Table([]string{"Position ID", "Symbol", "Side", "Size", "Entry", "Liq Price", "Margin", "uPnL", "ROE"}, out)
 }
 
 func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) error {
@@ -76,5 +89,5 @@ func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) err
 			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal, p.Roe,
 		})
 	}
-	return io.Table([]string{"ID", "Market", "Side", "Open", "Close", "Qty", "PnL", "ROE"}, out)
+	return io.Table([]string{"Position ID", "Symbol", "Side", "Open", "Close", "Size", "PnL", "ROE"}, out)
 }

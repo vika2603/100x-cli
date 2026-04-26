@@ -15,12 +15,11 @@ import (
 
 // AddOptions captures the flag-bound state of `position add`.
 type AddOptions struct {
-	Market     string
+	Symbol     string
 	PositionID string
 	Type       string
 	Price      string
-	Quantity   string
-	ClientOID  string
+	Size       string
 
 	Factory *factory.Factory
 }
@@ -29,32 +28,37 @@ type AddOptions struct {
 func NewCmdAdd(f *factory.Factory) *cobra.Command {
 	opts := &AddOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "add",
+		Use:   "add <symbol>",
 		Short: "Top up an existing position (limit or market)",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runAdd(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
 	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position id")
 	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
 	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Quantity, "qty", "", "quantity to add")
-	c.Flags().StringVar(&opts.ClientOID, "client-oid", "", "client order id")
-	_ = c.MarkFlagRequired("market")
-	_ = c.MarkFlagRequired("position-id")
-	_ = c.MarkFlagRequired("qty")
+	c.Flags().StringVar(&opts.Size, "size", "", "size to add")
+	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
 func runAdd(ctx context.Context, opts *AddOptions) error {
 	f := opts.Factory
+	positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+	if err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
+		if opts.Price == "" {
+			return fmt.Errorf("--price is required for limit position add")
+		}
 		resp, err := f.Client.Position.LimitAddPosition(ctx, futures.LimitAddPositionReq{
-			Market: opts.Market, PositionID: opts.PositionID,
-			Price: opts.Price, Quantity: opts.Quantity, ClientOID: opts.ClientOID,
+			Market: opts.Symbol, PositionID: positionID,
+			Price: opts.Price, Quantity: opts.Size,
 		})
 		if err != nil {
 			return err
@@ -62,17 +66,17 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Position ID", Value: opts.PositionID},
-				{Key: "Market", Value: resp.Market},
+				{Key: "Position ID", Value: positionID},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
-				{Key: "Qty", Value: resp.Volume},
+				{Key: "Size", Value: resp.Volume},
 			})
 		})
 	case "market":
 		resp, err := f.Client.Position.MarketAddPosition(ctx, futures.MarketAddPositionReq{
-			Market: opts.Market, PositionID: opts.PositionID,
-			Quantity: opts.Quantity, ClientOID: opts.ClientOID,
+			Market: opts.Symbol, PositionID: positionID,
+			Quantity: opts.Size,
 		})
 		if err != nil {
 			return err
@@ -80,11 +84,11 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Position ID", Value: opts.PositionID},
-				{Key: "Market", Value: resp.Market},
+				{Key: "Position ID", Value: positionID},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
-				{Key: "Qty", Value: resp.Volume},
+				{Key: "Size", Value: resp.Volume},
 			})
 		})
 	}

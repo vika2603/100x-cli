@@ -15,8 +15,9 @@ import (
 // NewCmdFutures returns the `100x futures` group.
 func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "futures",
-		Short: "Futures-product commands",
+		Use:     "futures",
+		Aliases: []string{"f"},
+		Short:   "Futures-product commands",
 	}
 	c.AddCommand(
 		order.NewCmdOrder(f),

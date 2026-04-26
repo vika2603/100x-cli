@@ -16,13 +16,17 @@ import (
 
 // PlaceOptions captures the flag-bound state of `order place`.
 type PlaceOptions struct {
-	Type      string
-	Market    string
-	Side      string
-	Price     string
-	Quantity  string
-	ClientOID string
-	TIF       string
+	Type     string
+	Symbol   string
+	Side     string
+	Price    string
+	Size     string
+	ClientID string
+	TIF      string
+	SL       string
+	SLBy     string
+	TP       string
+	TPBy     string
 
 	Factory *factory.Factory
 }
@@ -33,25 +37,29 @@ type PlaceOptions struct {
 func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	opts := &PlaceOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "place",
+		Use:   "place <symbol>",
 		Short: "Place a limit or market order",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
 		},
 	}
 	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol (e.g. BTCUSDT)")
 	c.Flags().StringVar(&opts.Side, "side", "", "buy | sell")
 	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Quantity, "qty", "", "order quantity")
-	c.Flags().StringVar(&opts.ClientOID, "client-oid", "", "optional client-side order id")
-	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "GTC | FOK | IOC | PostOnly")
-	_ = c.MarkFlagRequired("market")
+	c.Flags().StringVar(&opts.Size, "size", "", "order size")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "optional client-side order id")
+	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "GTC | IOC | FOK | POST_ONLY")
+	c.Flags().StringVar(&opts.SL, "sl", "", "stop-loss trigger price")
+	c.Flags().StringVar(&opts.SLBy, "sl-by", "LAST", "LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.TP, "tp", "", "take-profit trigger price")
+	c.Flags().StringVar(&opts.TPBy, "tp-by", "LAST", "LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("side")
-	_ = c.MarkFlagRequired("qty")
+	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
 	_ = c.RegisterFlagCompletionFunc("side", cobra.FixedCompletions([]string{"buy", "sell"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("tif", cobra.FixedCompletions([]string{"GTC", "FOK", "IOC", "PostOnly"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("tif", cobra.FixedCompletions([]string{"GTC", "FOK", "IOC", "POST_ONLY"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
@@ -65,20 +73,35 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if err != nil {
 		return err
 	}
+	slBy, err := shared.ParseStopTriggerType(opts.SLBy)
+	if err != nil {
+		return err
+	}
+	tpBy, err := shared.ParseStopTriggerType(opts.TPBy)
+	if err != nil {
+		return err
+	}
+	isStop := opts.SL != "" || opts.TP != ""
 	f := opts.Factory
 	switch opts.Type {
 	case "limit":
+		if opts.Price == "" {
+			return fmt.Errorf("--price is required for limit orders")
+		}
 		if f.DryRun {
-			f.IO.Println("dry-run: limit", opts.Market, opts.Side, opts.Price, "qty", opts.Quantity)
+			f.IO.Println("dry-run: limit", opts.Symbol, opts.Side, opts.Price, "size", opts.Size)
 			return nil
 		}
 		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
-			Market:    opts.Market,
-			Side:      side,
-			Price:     opts.Price,
-			Quantity:  opts.Quantity,
-			ClientOID: opts.ClientOID,
-			TIF:       tif,
+			Market:        opts.Symbol,
+			Side:          side,
+			Price:         opts.Price,
+			Quantity:      opts.Size,
+			ClientOID:     opts.ClientID,
+			TIF:           tif,
+			IsStop:        isStop,
+			StopLossPrice: opts.SL, StopLossPriceType: slBy,
+			TakeProfitPrice: opts.TP, TakeProfitPriceType: tpBy,
 		})
 		if err != nil {
 			return err
@@ -86,20 +109,23 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Market", Value: opts.Market},
+				{Key: "Symbol", Value: opts.Symbol},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 			})
 		})
 	case "market":
 		if f.DryRun {
-			f.IO.Println("dry-run: market", opts.Market, opts.Side, "qty", opts.Quantity)
+			f.IO.Println("dry-run: market", opts.Symbol, opts.Side, "size", opts.Size)
 			return nil
 		}
 		resp, err := f.Client.Order.MarketOrder(ctx, futures.MarketOrderReq{
-			Market:    opts.Market,
-			Side:      side,
-			Quantity:  opts.Quantity,
-			ClientOID: opts.ClientOID,
+			Market:        opts.Symbol,
+			Side:          side,
+			Quantity:      opts.Size,
+			ClientOID:     opts.ClientID,
+			IsStop:        isStop,
+			StopLossPrice: opts.SL, StopLossPriceType: slBy,
+			TakeProfitPrice: opts.TP, TakeProfitPriceType: tpBy,
 		})
 		if err != nil {
 			return err
@@ -107,7 +133,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Market", Value: opts.Market},
+				{Key: "Symbol", Value: opts.Symbol},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 			})
 		})

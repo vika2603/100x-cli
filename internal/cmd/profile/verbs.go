@@ -3,14 +3,15 @@ package profile
 import (
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
+	"sort"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/config"
 	"github.com/vika2603/100x-cli/internal/credential"
+	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
@@ -51,16 +52,24 @@ type AddOptions struct {
 	SetDefault bool
 }
 
-func newCmdAdd() *cobra.Command {
+func newCmdAdd(f *factory.Factory) *cobra.Command {
 	opts := &AddOptions{}
 	c := &cobra.Command{
-		Use:   "add",
+		Use:   "add <name>",
 		Short: "Add or update a profile",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return runAdd(opts)
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			opts.Name = args[0]
+			if err := runAdd(opts); err != nil {
+				return err
+			}
+			payload := currentProfile{Name: opts.Name}
+			return f.IO.Render(payload, func() error {
+				f.IO.Println("saved profile", opts.Name)
+				return nil
+			})
 		},
 	}
-	c.Flags().StringVar(&opts.Name, "name", "", "profile name")
 	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint (e.g. https://api.example.com)")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client_id issued by the gateway")
 	c.Flags().StringVar(&opts.Env, "env", "live", "free-text env label (live | test | paper)")
@@ -97,11 +106,30 @@ func runAdd(opts *AddOptions) error {
 	if err := credential.Default().Save(opts.Name, secret); err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "saved profile", opts.Name)
 	return nil
 }
 
-func newCmdList() *cobra.Command {
+type profileListItem struct {
+	Name     string `json:"name"`
+	Env      string `json:"env"`
+	Endpoint string `json:"endpoint"`
+	Current  bool   `json:"current"`
+}
+
+type currentProfile struct {
+	Name string `json:"name"`
+}
+
+type profileDetail struct {
+	Name         string `json:"name"`
+	Endpoint     string `json:"endpoint"`
+	ClientID     string `json:"client_id"`
+	Env          string `json:"env"`
+	Current      bool   `json:"current"`
+	SecretStored bool   `json:"secret_stored"`
+}
+
+func newCmdList(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List configured profiles",
@@ -110,19 +138,90 @@ func newCmdList() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for n, p := range cfg.Profiles {
-				marker := ""
-				if n == cfg.Default {
-					marker = " (default)"
-				}
-				fmt.Printf("%s\t%s\t%s%s\n", n, p.Env, p.Endpoint, marker)
+			names := make([]string, 0, len(cfg.Profiles))
+			for n := range cfg.Profiles {
+				names = append(names, n)
 			}
-			return nil
+			sort.Strings(names)
+			rows := make([]profileListItem, 0, len(names))
+			for _, n := range names {
+				p := cfg.Profiles[n]
+				rows = append(rows, profileListItem{
+					Name: n, Env: p.Env, Endpoint: p.Endpoint, Current: n == cfg.Default,
+				})
+			}
+			return f.IO.Render(rows, func() error {
+				out := make([][]string, 0, len(rows))
+				for _, r := range rows {
+					current := ""
+					if r.Current {
+						current = "*"
+					}
+					out = append(out, []string{r.Name, r.Env, r.Endpoint, current})
+				}
+				return f.IO.Table([]string{"Name", "Env", "Endpoint", "Current"}, out)
+			})
 		},
 	}
 }
 
-func newCmdUse() *cobra.Command {
+func newCmdCurrent(f *factory.Factory) *cobra.Command {
+	return &cobra.Command{
+		Use:   "current",
+		Short: "Print the current profile",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			if cfg.Default == "" {
+				return config.ErrNoProfile
+			}
+			if _, ok := cfg.Profiles[cfg.Default]; !ok {
+				return fmt.Errorf("profile %q not found", cfg.Default)
+			}
+			payload := currentProfile{Name: cfg.Default}
+			return f.IO.Render(payload, func() error {
+				return f.IO.Resultln(payload.Name)
+			})
+		},
+	}
+}
+
+func newCmdShow(f *factory.Factory) *cobra.Command {
+	return &cobra.Command{
+		Use:               "show <name>",
+		Short:             "Show one profile (secret redacted)",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeProfileNames,
+		RunE: func(_ *cobra.Command, args []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			p, ok := cfg.Profiles[args[0]]
+			if !ok {
+				return fmt.Errorf("profile %q not found", args[0])
+			}
+			payload := profileDetail{
+				Name: args[0], Endpoint: p.Endpoint, ClientID: p.ClientID, Env: p.Env,
+				Current: args[0] == cfg.Default, SecretStored: true,
+			}
+			return f.IO.Render(payload, func() error {
+				return f.IO.Object([]output.KV{
+					{Key: "Name", Value: payload.Name},
+					{Key: "Endpoint", Value: payload.Endpoint},
+					{Key: "Client ID", Value: payload.ClientID},
+					{Key: "Env", Value: payload.Env},
+					{Key: "Current", Value: fmt.Sprint(payload.Current)},
+					{Key: "Secret", Value: "<stored>"},
+				})
+			})
+		},
+	}
+}
+
+func newCmdUse(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:               "use <name>",
 		Short:             "Set the default profile",
@@ -137,7 +236,13 @@ func newCmdUse() *cobra.Command {
 				return fmt.Errorf("profile %q not found", args[0])
 			}
 			cfg.Default = args[0]
-			return config.Save(cfg)
+			if err := config.Save(cfg); err != nil {
+				return err
+			}
+			payload := currentProfile{Name: args[0]}
+			return f.IO.Render(payload, func() error {
+				return f.IO.Resultln(payload.Name)
+			})
 		},
 	}
 }
@@ -157,27 +262,6 @@ func completeProfileNames(_ *cobra.Command, args []string, _ string) ([]string, 
 		out = append(out, name)
 	}
 	return out, cobra.ShellCompDirectiveNoFileComp
-}
-
-func newCmdShow() *cobra.Command {
-	return &cobra.Command{
-		Use:               "show <name>",
-		Short:             "Show one profile (secret redacted)",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeProfileNames,
-		RunE: func(_ *cobra.Command, args []string) error {
-			cfg, err := config.Load()
-			if err != nil {
-				return err
-			}
-			p, ok := cfg.Profiles[args[0]]
-			if !ok {
-				return fmt.Errorf("profile %q not found", args[0])
-			}
-			fmt.Printf("name: %s\nendpoint: %s\nclient_id: %s\nenv: %s\nsecret: <stored>\n", args[0], p.Endpoint, p.ClientID, p.Env)
-			return nil
-		},
-	}
 }
 
 func newCmdRemove(f *factory.Factory) *cobra.Command {

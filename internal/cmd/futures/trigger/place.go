@@ -12,13 +12,13 @@ import (
 
 // PlaceOptions captures the flag-bound state of `trigger place`.
 type PlaceOptions struct {
-	Market       string
+	Symbol       string
 	Side         string
-	StopPrice    string
-	OrderPrice   string
+	TriggerPrice string
+	LimitPrice   string
 	CurrentPrice string
-	PriceType    string
-	Quantity     string
+	TriggerBy    string
+	Size         string
 
 	Factory *factory.Factory
 }
@@ -27,25 +27,26 @@ type PlaceOptions struct {
 func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	opts := &PlaceOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "place",
+		Use:   "place <symbol>",
 		Short: "Place a standalone trigger (condition order)",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
 	c.Flags().StringVar(&opts.Side, "side", "", "buy | sell")
-	c.Flags().StringVar(&opts.StopPrice, "stop-price", "", "trigger price")
-	c.Flags().StringVar(&opts.OrderPrice, "order-price", "", "limit price after trigger (omit = market)")
-	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "current-price snapshot (auto-fetched from ticker if omitted, matching --price-type)")
-	c.Flags().StringVar(&opts.PriceType, "price-type", "last", "last | index | mark")
-	c.Flags().StringVar(&opts.Quantity, "qty", "", "order quantity")
-	_ = c.MarkFlagRequired("market")
+	c.Flags().StringVar(&opts.Size, "size", "", "order size")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.LimitPrice, "limit-price", "", "limit price after trigger (omit = market)")
+	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "current-price snapshot")
+	_ = c.Flags().MarkHidden("current-price")
 	_ = c.MarkFlagRequired("side")
-	_ = c.MarkFlagRequired("stop-price")
-	_ = c.MarkFlagRequired("qty")
+	_ = c.MarkFlagRequired("size")
+	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("side", cobra.FixedCompletions([]string{"buy", "sell"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("price-type", cobra.FixedCompletions([]string{"last", "index", "mark"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
@@ -54,33 +55,32 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if err != nil {
 		return err
 	}
-	priceType, err := shared.ParsePriceType(opts.PriceType)
+	priceType, err := shared.ParsePriceType(opts.TriggerBy)
 	if err != nil {
 		return err
 	}
 	f := opts.Factory
 	currentPrice := opts.CurrentPrice
 	if currentPrice == "" {
-		currentPrice, err = fetchCurrentPrice(ctx, f.Client, opts.Market, priceType)
+		currentPrice, err = fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)
 		if err != nil {
 			return err
 		}
 	}
 	resp, err := f.Client.Order.StopOrder(ctx, futures.StopOrderReq{
-		Market:        opts.Market,
+		Market:        opts.Symbol,
 		Side:          side,
-		OrderPrice:    opts.OrderPrice,
-		StopPrice:     opts.StopPrice,
+		OrderPrice:    opts.LimitPrice,
+		StopPrice:     opts.TriggerPrice,
 		CutPrice:      currentPrice,
 		StopPriceType: priceType,
-		Quantity:      opts.Quantity,
+		Quantity:      opts.Size,
 	})
 	if err != nil {
 		return err
 	}
 	return f.IO.Render(resp, func() error {
-		f.IO.Println("trigger placed in", opts.Market)
-		return nil
+		return f.IO.Resultln("Created trigger on", opts.Symbol)
 	})
 }
 

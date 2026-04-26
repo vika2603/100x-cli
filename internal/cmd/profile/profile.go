@@ -17,6 +17,6 @@ func NewCmdProfile(f *factory.Factory) *cobra.Command {
 		Use:   "profile",
 		Short: "Manage credential profiles",
 	}
-	c.AddCommand(newCmdAdd(), newCmdList(), newCmdUse(), newCmdShow(), newCmdRemove(f))
+	c.AddCommand(newCmdAdd(f), newCmdList(f), newCmdCurrent(f), newCmdUse(f), newCmdShow(f), newCmdRemove(f))
 	return c
 }

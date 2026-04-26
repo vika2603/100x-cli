@@ -31,7 +31,7 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 
 	t.Run("update SL preserves TP", func(t *testing.T) {
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Market: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: itoa(orderID),
 			Leg: LegSL, Price: "60000", PriceType: futures.StopTriggerTypeLast,
 		})
 		if err != nil {
@@ -47,7 +47,7 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 
 	t.Run("update TP preserves SL", func(t *testing.T) {
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Market: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: itoa(orderID),
 			Leg: LegTP, Price: "80000", PriceType: futures.StopTriggerTypeMark,
 		})
 		if err != nil {
@@ -63,7 +63,7 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 
 	t.Run("ClearOther wipes opposite leg", func(t *testing.T) {
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Market: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: itoa(orderID),
 			Leg: LegSL, Price: "60000", PriceType: futures.StopTriggerTypeLast,
 			ClearOther: true,
 		})

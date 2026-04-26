@@ -1,8 +1,8 @@
 // Package position wires the `100x futures position` cobra verbs.
 //
-// `preference` and `leverage` use shared/preference.go to merge partial
-// updates with the gateway's current state, since POST /setting/preference
-// requires both leverage and position-type fields together.
+// `preference` uses shared/preference.go to merge partial updates with the
+// gateway's current state, since POST /setting/preference requires both
+// leverage and mode fields together.
 package position
 
 import (
@@ -19,11 +19,11 @@ func NewCmdPosition(f *factory.Factory) *cobra.Command {
 	}
 	c.AddCommand(
 		NewCmdList(f),
+		NewCmdHistory(f),
 		NewCmdClose(f),
 		NewCmdAdd(f),
 		NewCmdMargin(f),
 		NewCmdPreference(f),
-		NewCmdLeverage(f),
 	)
 	return c
 }

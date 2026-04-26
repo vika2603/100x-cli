@@ -3,11 +3,14 @@ package market
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/output"
 )
 
 // NewCmdMarket returns the `market` group.
@@ -16,18 +19,28 @@ func NewCmdMarket(f *factory.Factory) *cobra.Command {
 		Use:   "market",
 		Short: "Public market data",
 	}
-	c.AddCommand(newCmdSymbols(f), newCmdTicker(f), newCmdDepth(f), newCmdTrades(f), newCmdKline(f))
+	c.AddCommand(newCmdList(f), newCmdState(f), newCmdDepth(f), newCmdDeals(f), newCmdKline(f))
 	return c
 }
 
-func newCmdSymbols(f *factory.Factory) *cobra.Command {
-	return &cobra.Command{
-		Use:   "symbols",
+func newCmdList(f *factory.Factory) *cobra.Command {
+	var includeUnavailable bool
+	c := &cobra.Command{
+		Use:   "list",
 		Short: "List all tradable instruments",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			resp, err := f.Client.Market.MarketList(cmd.Context(), futures.MarketListReq{})
 			if err != nil {
 				return err
+			}
+			if !includeUnavailable {
+				filtered := resp[:0]
+				for _, m := range resp {
+					if m.Available {
+						filtered = append(filtered, m)
+					}
+				}
+				resp = filtered
 			}
 			return f.IO.Render(resp, func() error {
 				rows := make([][]string, 0, len(resp))
@@ -38,50 +51,84 @@ func newCmdSymbols(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
+	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "show unavailable markets too")
+	return c
 }
 
-// TickerOptions for `market ticker`.
-type TickerOptions struct {
-	Market string
-	All    bool
+// StateOptions for `market state`.
+type StateOptions struct {
+	Symbol string
 
 	Factory *factory.Factory
 }
 
-func newCmdTicker(f *factory.Factory) *cobra.Command {
-	opts := &TickerOptions{Factory: f}
+func newCmdState(f *factory.Factory) *cobra.Command {
+	opts := &StateOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "ticker",
-		Short: "Show one or all market tickers",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runTicker(cmd.Context(), opts)
+		Use:   "state [symbol]",
+		Short: "Show one or all market states",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				opts.Symbol = args[0]
+			}
+			return runState(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
-	c.Flags().BoolVar(&opts.All, "all", false, "fetch every market")
 	return c
 }
 
-func runTicker(ctx context.Context, opts *TickerOptions) error {
+func runState(ctx context.Context, opts *StateOptions) error {
 	f := opts.Factory
-	if opts.All {
+	if opts.Symbol == "" {
 		resp, err := f.Client.Market.MarketStateAll(ctx, futures.MarketStateAllReq{})
 		if err != nil {
 			return err
 		}
-		return f.IO.Render(resp, nil)
+		return f.IO.Render(resp, func() error { return printMarketStates(f.IO, resp) })
 	}
-	resp, err := f.Client.Market.MarketState(ctx, futures.MarketStateReq{Market: opts.Market})
+	resp, err := f.Client.Market.MarketState(ctx, futures.MarketStateReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}
-	return f.IO.Render(resp, nil)
+	return f.IO.Render(resp, func() error { return printMarketState(f.IO, *resp) })
+}
+
+func printMarketState(io *output.Renderer, s futures.MarketStateItem) error {
+	return io.Object([]output.KV{
+		{Key: "Symbol", Value: s.Market},
+		{Key: "Last", Value: s.Last},
+		{Key: "Change", Value: s.Change},
+		{Key: "High", Value: s.High},
+		{Key: "Low", Value: s.Low},
+		{Key: "Volume", Value: s.Volume},
+		{Key: "Index", Value: s.IndexPrice},
+		{Key: "Mark", Value: s.SignPrice},
+		{Key: "Funding Next", Value: s.FundingRateNext},
+		{Key: "Funding Time", Value: strconv.FormatInt(s.FundingTime, 10)},
+	})
+}
+
+func printMarketStates(io *output.Renderer, rows []futures.MarketStateItem) error {
+	out := make([][]string, 0, len(rows))
+	for _, s := range rows {
+		out = append(out, []string{
+			s.Market,
+			s.Last,
+			s.Change,
+			s.Volume,
+			s.IndexPrice,
+			s.SignPrice,
+			s.FundingRateNext,
+		})
+	}
+	return io.Table([]string{"Symbol", "Last", "Change", "Volume", "Index", "Mark", "Funding Next"}, out)
 }
 
 // DepthOptions for `market depth`.
 type DepthOptions struct {
-	Market string
-	Merge  string
+	Symbol   string
+	TickSize string
 
 	Factory *factory.Factory
 }
@@ -89,44 +136,44 @@ type DepthOptions struct {
 func newCmdDepth(f *factory.Factory) *cobra.Command {
 	opts := &DepthOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "depth",
+		Use:   "depth <symbol>",
 		Short: "Show the order-book snapshot",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			resp, err := f.Client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Market, Merge: opts.Merge})
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
+			resp, err := f.Client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Symbol, Merge: opts.TickSize})
 			if err != nil {
 				return err
 			}
 			return f.IO.Render(resp, nil)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
-	c.Flags().StringVar(&opts.Merge, "merge", "", "price-step merge (e.g. 0.1)")
-	_ = c.MarkFlagRequired("market")
+	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "price aggregation level")
 	return c
 }
 
-func newCmdTrades(f *factory.Factory) *cobra.Command {
-	var market string
+func newCmdDeals(f *factory.Factory) *cobra.Command {
+	var symbol string
 	c := &cobra.Command{
-		Use:   "trades",
+		Use:   "deals <symbol>",
 		Short: "List the latest public trades",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			resp, err := f.Client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: market})
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			symbol = args[0]
+			resp, err := f.Client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: symbol})
 			if err != nil {
 				return err
 			}
 			return f.IO.Render(resp, nil)
 		},
 	}
-	c.Flags().StringVar(&market, "market", "", "instrument symbol")
-	_ = c.MarkFlagRequired("market")
 	return c
 }
 
 // KlineOptions for `market kline`.
 type KlineOptions struct {
-	Market    string
-	Type      string
+	Symbol    string
+	Interval  string
 	StartTime int
 	EndTime   int
 
@@ -136,27 +183,68 @@ type KlineOptions struct {
 func newCmdKline(f *factory.Factory) *cobra.Command {
 	opts := &KlineOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "kline",
+		Use:   "kline <symbol>",
 		Short: "Get candlestick history",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runKline(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
-	c.Flags().StringVar(&opts.Type, "type", "1m", "candle type (1m, 5m, 1h, ...)")
-	c.Flags().IntVar(&opts.StartTime, "start", 0, "start time (seconds)")
-	c.Flags().IntVar(&opts.EndTime, "end", 0, "end time (seconds)")
-	_ = c.MarkFlagRequired("market")
+	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval")
+	c.Flags().IntVar(&opts.StartTime, "since", 0, "start time (seconds)")
+	c.Flags().IntVar(&opts.EndTime, "until", 0, "end time (seconds)")
 	return c
 }
 
 func runKline(ctx context.Context, opts *KlineOptions) error {
 	f := opts.Factory
+	interval, err := parseInterval(opts.Interval)
+	if err != nil {
+		return err
+	}
 	resp, err := f.Client.Market.MarketKline(ctx, futures.MarketKlineReq{
-		Market: opts.Market, Type: opts.Type, StartTime: opts.StartTime, EndTime: opts.EndTime,
+		Market: opts.Symbol, Type: interval, StartTime: opts.StartTime, EndTime: opts.EndTime,
 	})
 	if err != nil {
 		return err
 	}
 	return f.IO.Render(resp, nil)
+}
+
+func parseInterval(s string) (string, error) {
+	switch s {
+	case "1m":
+		return "1min", nil
+	case "5m":
+		return "5min", nil
+	case "10m":
+		return "10min", nil
+	case "15m":
+		return "15min", nil
+	case "30m":
+		return "30min", nil
+	case "1h":
+		return "1hour", nil
+	case "2h":
+		return "2hour", nil
+	case "4h":
+		return "4hour", nil
+	case "6h":
+		return "6hour", nil
+	case "12h":
+		return "12hour", nil
+	case "1d":
+		return "1day", nil
+	case "1w":
+		return "1week", nil
+	case "1M":
+		return "1month", nil
+	case "1min", "5min", "10min", "15min", "30min",
+		"1hour", "2hour", "4hour", "6hour", "12hour",
+		"1day", "1week", "1month":
+		return s, nil
+	default:
+		return "", fmt.Errorf("unknown --interval %q", s)
+	}
 }

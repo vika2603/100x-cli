@@ -7,16 +7,17 @@ package shared
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
 )
 
 // ParseSide accepts the user-friendly forms.
 func ParseSide(s string) (futures.Side, error) {
-	switch s {
-	case "buy", "BUY", "b":
+	switch strings.ToUpper(s) {
+	case "BUY", "B":
 		return futures.SideBuy, nil
-	case "sell", "SELL", "s":
+	case "SELL", "S":
 		return futures.SideSell, nil
 	}
 	return 0, fmt.Errorf("unknown side %q (want buy|sell)", s)
@@ -26,15 +27,15 @@ func ParseSide(s string) (futures.Side, error) {
 // defaults to the last-trade feed; any other unrecognised value is an
 // error rather than a silent fallback.
 func ParsePriceType(s string) (futures.StopTriggerType, error) {
-	switch s {
-	case "", "last", "Last":
+	switch strings.ToUpper(s) {
+	case "", "LAST":
 		return futures.StopTriggerTypeLast, nil
-	case "index", "Index":
+	case "INDEX":
 		return futures.StopTriggerTypeIndex, nil
-	case "mark", "Mark":
+	case "MARK":
 		return futures.StopTriggerTypeMark, nil
 	}
-	return 0, fmt.Errorf("unknown --price-type %q (want last|index|mark)", s)
+	return 0, fmt.Errorf("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }
 
 // Leg is which leg an attach request is updating.
@@ -48,10 +49,10 @@ const (
 
 // ParseLeg accepts the user-typed labels.
 func ParseLeg(s string) (Leg, error) {
-	switch s {
-	case "SL", "sl", "stop-loss":
+	switch strings.ToUpper(s) {
+	case "SL", "STOP-LOSS":
 		return LegSL, nil
-	case "TP", "tp", "take-profit":
+	case "TP", "TAKE-PROFIT":
 		return LegTP, nil
 	}
 	return 0, fmt.Errorf("unknown leg %q (want SL|TP)", s)

@@ -77,6 +77,9 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			f.Yes = gf.yes
 			return nil
 		}
+		if isPublicCmd(c) {
+			return populatePublic(f, gf)
+		}
 		return populate(f, gf)
 	}
 
@@ -84,16 +87,19 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		futuresGroup.NewCmdFutures(f),
 		profile.NewCmdProfile(f),
 		completion.NewCmdCompletion(),
+		newCmdVersion(f),
 	)
 
-	emit := func(err error, code int, codeString string) {
+	emit := func(err error, _ int, codeString string) {
 		if gf.jsonOut || gf.jq != "" {
 			payload := struct {
-				Error    errorPayload `json:"error"`
-				ExitCode int          `json:"exit_code"`
-			}{
-				Error:    errorPayload{Code: codeString, Message: err.Error()},
-				ExitCode: code,
+				Error errorPayload `json:"error"`
+			}{Error: errorPayload{Code: codeString, Message: err.Error()}}
+			var apiErr *futures.APIError
+			if errors.As(err, &apiErr) {
+				payload.Error.Message = apiErr.Message
+				payload.Error.HTTPStatus = apiErr.Status
+				payload.Error.APICode = apiErr.Code
 			}
 			enc := json.NewEncoder(os.Stderr)
 			enc.SetIndent("", "  ")
@@ -106,8 +112,10 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 }
 
 type errorPayload struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code       string `json:"code"`
+	Message    string `json:"message"`
+	HTTPStatus int    `json:"http_status,omitempty"`
+	APICode    int    `json:"api_code,omitempty"`
 }
 
 // isCredentialFreeCmd reports whether c is in a subtree that does not need
@@ -116,7 +124,45 @@ type errorPayload struct {
 func isCredentialFreeCmd(c *cobra.Command) bool {
 	for cur := c; cur != nil; cur = cur.Parent() {
 		switch cur.Name() {
-		case "profile", "completion", "help":
+		case "profile", "completion", "help", "version":
+			return true
+		}
+	}
+	return false
+}
+
+type versionPayload struct {
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+	BuildDate string `json:"build_date"`
+}
+
+func newCmdVersion(f *factory.Factory) *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print version information",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			payload := versionPayload{
+				Version:   version.Version,
+				Commit:    version.Commit,
+				BuildDate: version.BuildDate,
+			}
+			return f.IO.Render(payload, func() error {
+				return f.IO.Object([]output.KV{
+					{Key: "Version", Value: payload.Version},
+					{Key: "Commit", Value: payload.Commit},
+					{Key: "Build Date", Value: payload.BuildDate},
+				})
+			})
+		},
+	}
+}
+
+// isPublicCmd reports whether c is in a subtree that can use a configured
+// endpoint without loading private credentials.
+func isPublicCmd(c *cobra.Command) bool {
+	for cur := c; cur != nil; cur = cur.Parent() {
+		if cur.Name() == "market" {
 			return true
 		}
 	}
@@ -161,6 +207,41 @@ func populate(f *factory.Factory, gf *globalFlags) error {
 		Endpoint:   p.Endpoint,
 		ClientID:   p.ClientID,
 		ClientKey:  secret,
+		HTTPClient: &http.Client{Timeout: gf.timeout},
+	})
+	return nil
+}
+
+func populatePublic(f *factory.Factory, gf *globalFlags) error {
+	r, err := newRenderer(gf)
+	if err != nil {
+		return err
+	}
+	f.IO = r
+	f.DryRun = gf.dryRun
+	f.Yes = gf.yes
+	f.Timeout = gf.timeout
+
+	if os.Getenv("E100X_FAKE") == "1" {
+		f.Client = futures.NewWithDoer(fakeapi.New())
+		return nil
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	name, p, err := config.Resolve(cfg, gf.profile)
+	if err != nil {
+		if errors.Is(err, config.ErrNoProfile) {
+			return fmt.Errorf("no profile configured: run `100x init`")
+		}
+		return err
+	}
+	f.ProfileName = name
+	f.Profile = p
+	f.Client = futures.New(futures.Options{
+		Endpoint:   p.Endpoint,
 		HTTPClient: &http.Client{Timeout: gf.timeout},
 	})
 	return nil

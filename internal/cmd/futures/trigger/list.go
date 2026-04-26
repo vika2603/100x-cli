@@ -2,8 +2,6 @@ package trigger
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -15,8 +13,8 @@ import (
 
 // ListOptions captures the flag-bound state of `trigger list`.
 type ListOptions struct {
-	Market   string
-	Status   string
+	Symbol   string
+	Finished bool
 	Page     int
 	PageSize int
 
@@ -27,48 +25,54 @@ type ListOptions struct {
 func NewCmdList(f *factory.Factory) *cobra.Command {
 	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "list",
+		Use:   "list <symbol>",
 		Short: "List active or finished triggers",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "filter by market")
-	c.Flags().StringVar(&opts.Status, "status", "open", "open | closed")
+	c.Flags().BoolVar(&opts.Finished, "finished", false, "list finished triggers")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 50, "page size")
-	_ = c.RegisterFlagCompletionFunc("status", cobra.FixedCompletions([]string{"open", "closed"}, cobra.ShellCompDirectiveNoFileComp))
+	c.Flags().IntVar(&opts.PageSize, "page-size", 100, "page size")
 	return c
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
-	switch opts.Status {
-	case "open", "":
+	if !opts.Finished {
 		resp, err := f.Client.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{
-			Market: opts.Market, Page: opts.Page, PageSize: opts.PageSize,
+			Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 		})
 		if err != nil {
 			return err
 		}
-		return f.IO.Render(resp, func() error { return printStops(f.IO, resp.Records) })
-	case "closed":
-		resp, err := f.Client.Order.FinishedStopOrder(ctx, futures.FinishedStopOrderReq{
-			Market: opts.Market, Page: opts.Page, PageSize: opts.PageSize,
-		})
-		if err != nil {
-			return err
-		}
-		return f.IO.Render(resp, func() error { return printStops(f.IO, resp.Records) })
+		records := stopRecords(resp.Records)
+		return f.IO.Render(records, func() error { return printStops(f.IO, records) })
 	}
-	return fmt.Errorf("unknown --status %q (want open|closed)", opts.Status)
+	resp, err := f.Client.Order.FinishedStopOrder(ctx, futures.FinishedStopOrderReq{
+		Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
+	})
+	if err != nil {
+		return err
+	}
+	records := stopRecords(resp.Records)
+	return f.IO.Render(records, func() error { return printStops(f.IO, records) })
+}
+
+func stopRecords(rows []futures.StopOrderItem) []futures.StopOrderItem {
+	if rows == nil {
+		return []futures.StopOrderItem{}
+	}
+	return rows
 }
 
 func printStops(io *output.Renderer, rows []futures.StopOrderItem) error {
 	out := make([][]string, 0, len(rows))
 	for _, s := range rows {
 		out = append(out, []string{
-			strconv.FormatInt(s.OrderID, 10),
+			s.ContractOrderID,
 			s.Market,
 			style.StopOrderType(io, s.ContractOrderType),
 			style.Side(io, s.Side),
@@ -78,5 +82,5 @@ func printStops(io *output.Renderer, rows []futures.StopOrderItem) error {
 			s.Size,
 		})
 	}
-	return io.Table([]string{"ID", "Market", "Type", "Side", "Status", "Trigger Price", "Order Price", "Size"}, out)
+	return io.Table([]string{"Trigger ID", "Symbol", "Type", "Side", "Status", "Trigger Price", "Order Price", "Size"}, out)
 }

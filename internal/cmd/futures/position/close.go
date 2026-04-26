@@ -10,17 +10,19 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // CloseOptions captures the flag-bound state of `position close`.
 type CloseOptions struct {
-	Market     string
+	Symbol     string
 	PositionID string
 	Type       string
 	Price      string
-	Quantity   string
-	ClientOID  string
+	Size       string
+	ClientID   string
 
 	Factory *factory.Factory
 }
@@ -29,32 +31,37 @@ type CloseOptions struct {
 func NewCmdClose(f *factory.Factory) *cobra.Command {
 	opts := &CloseOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "close",
+		Use:   "close <symbol>",
 		Short: "Close part or all of a position (limit or market)",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Symbol = args[0]
 			return runClose(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Market, "market", "", "instrument symbol")
 	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position id")
 	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
 	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Quantity, "qty", "", "quantity to close")
-	c.Flags().StringVar(&opts.ClientOID, "client-oid", "", "client order id")
-	_ = c.MarkFlagRequired("market")
-	_ = c.MarkFlagRequired("position-id")
-	_ = c.MarkFlagRequired("qty")
+	c.Flags().StringVar(&opts.Size, "size", "", "size to close")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client order id")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
 
 func runClose(ctx context.Context, opts *CloseOptions) error {
 	f := opts.Factory
+	positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+	if err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
+		if opts.Price == "" || opts.Size == "" {
+			return fmt.Errorf("--price and --size are required for limit position close")
+		}
 		resp, err := f.Client.Position.LimitClosePosition(ctx, futures.LimitClosePositionReq{
-			Market: opts.Market, PositionID: opts.PositionID,
-			Price: opts.Price, Quantity: opts.Quantity, ClientOID: opts.ClientOID,
+			Market: opts.Symbol, PositionID: positionID,
+			Price: opts.Price, Quantity: opts.Size, ClientOID: opts.ClientID,
 		})
 		if err != nil {
 			return err
@@ -62,17 +69,28 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Position ID", Value: opts.PositionID},
-				{Key: "Market", Value: resp.Market},
+				{Key: "Position ID", Value: positionID},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
-				{Key: "Qty", Value: resp.Volume},
+				{Key: "Size", Value: resp.Volume},
 			})
 		})
 	case "market":
+		ok, err := prompt.ConfirmDestructive(
+			fmt.Sprintf("Close full position %s on %s at market?", positionID, opts.Symbol), f.Yes)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+		}
+		if opts.Size != "" {
+			f.IO.Println("warning: --size is ignored for market position close; server closes the full position")
+		}
 		resp, err := f.Client.Position.MarketClosePosition(ctx, futures.MarketClosePositionReq{
-			Market: opts.Market, PositionID: opts.PositionID,
-			Quantity: opts.Quantity, ClientOID: opts.ClientOID,
+			Market: opts.Symbol, PositionID: positionID,
+			ClientOID: opts.ClientID,
 		})
 		if err != nil {
 			return err
@@ -80,11 +98,11 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Position ID", Value: opts.PositionID},
-				{Key: "Market", Value: resp.Market},
+				{Key: "Position ID", Value: positionID},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
-				{Key: "Qty", Value: resp.Volume},
+				{Key: "Size", Value: resp.Volume},
 			})
 		})
 	}

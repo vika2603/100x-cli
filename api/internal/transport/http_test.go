@@ -33,7 +33,7 @@ func TestGetSignsAndDecodes(t *testing.T) {
 	var out struct {
 		Hello string `json:"hello"`
 	}
-	if err := c.Get(context.Background(), "/p", req{Market: "BTCUSDT"}, &out); err != nil {
+	if err := c.Get(context.Background(), "/p", req{Market: "BTC-USDT"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if gotPath != "/p" {
@@ -70,7 +70,7 @@ func TestPostSendsBodyAndAuth(t *testing.T) {
 		Market   string `json:"market,omitempty"`
 		Quantity string `json:"quantity,omitempty"`
 	}
-	if err := c.Post(context.Background(), "/p", body{Market: "BTC", Quantity: "1"}, nil); err != nil {
+	if err := c.Post(context.Background(), "/p", body{Market: "BTC-USDT", Quantity: "1"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, k := range []string{"client_id", "nonce", "ts", "sign"} {
@@ -85,8 +85,8 @@ func TestPostSendsBodyAndAuth(t *testing.T) {
 			t.Fatalf("auth param %s leaked into body", k)
 		}
 	}
-	if gotBody["market"] != "BTC" {
-		t.Fatalf("body.market=%v want BTC", gotBody["market"])
+	if gotBody["market"] != "BTCUSDT" {
+		t.Fatalf("body.market=%v want BTCUSDT", gotBody["market"])
 	}
 }
 
