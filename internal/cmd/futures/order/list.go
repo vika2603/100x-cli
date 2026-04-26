@@ -31,16 +31,24 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "list",
 		Short: "List open or finished orders",
+		Long: "List open or finished orders.\n\n" +
+			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
+		Example: "# List open orders for BTCUSDT only\n" +
+			"  100x futures order list --symbol BTCUSDT\n\n" +
+			"# List finished BTCUSDT orders from the last 24 hours with page size 50\n" +
+			"  100x futures order list --finished --symbol BTCUSDT --since now-24h --page-size 50\n\n" +
+			"# Extract order id, side, price, size, and status as JSON\n" +
+			"  100x --json futures order list --symbol BTCUSDT --jq 'map({order_id, side, price, volume, status})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "filter by symbol")
-	c.Flags().BoolVar(&opts.Finished, "finished", false, "list finished orders instead of pending")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show orders for this symbol")
+	c.Flags().BoolVar(&opts.Finished, "finished", false, "show finished orders instead of open orders")
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help+" (finished only)")
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help+" (finished only)")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 100, "page size")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
 	return c
 }
 

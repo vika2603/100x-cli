@@ -58,7 +58,13 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "add <name>",
 		Short: "Add or update a profile",
-		Args:  cobra.ExactArgs(1),
+		Long: "Add or update one credential profile.\n\n" +
+			"Profiles store user identity and env selection. The secret is saved in the OS keychain; endpoint settings live under [env.<name>].",
+		Example: "# Add profile test, use env test, and rely on the built-in test endpoint\n" +
+			"  100x profile add test --env test --client-id <CID>\n\n" +
+			"# Add profile live and save a custom endpoint for env live\n" +
+			"  100x profile add live --env live --endpoint https://api.example.com --client-id <CID>",
+		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.Name = args[0]
 			payload, err := runAdd(opts)
@@ -71,10 +77,10 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint for --env; stored under [env.<name>]")
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client_id issued by the gateway")
-	c.Flags().StringVar(&opts.Env, "env", config.DefaultEnv, "environment label selecting the endpoint")
-	c.Flags().StringVar(&opts.Secret, "secret", "", "API secret (omit to be prompted)")
+	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "set the endpoint for this env in [env.<name>]")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "gateway client ID for this profile")
+	c.Flags().StringVar(&opts.Env, "env", config.DefaultEnv, "env name stored on this profile")
+	c.Flags().StringVar(&opts.Secret, "secret", "", "gateway client secret; prompt when omitted")
 	c.Flags().BoolVar(&opts.SetDefault, "default", false, "make this the default profile")
 	return c
 }
@@ -196,6 +202,12 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List configured profiles",
+		Example: "# List all profiles in a human-readable table\n" +
+			"  100x profile list\n\n" +
+			"# List all profiles as JSON for scripts\n" +
+			"  100x --json profile list\n\n" +
+			"# Extract only the current profile, env, and endpoint\n" +
+			"  100x --json profile list --jq '.[] | select(.current) | {name, env, endpoint}'",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -233,6 +245,8 @@ func newCmdCurrent(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "current",
 		Short: "Print the current profile",
+		Example: "# Print the active default profile name\n" +
+			"  100x profile current",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -254,8 +268,10 @@ func newCmdCurrent(f *factory.Factory) *cobra.Command {
 
 func newCmdShow(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
-		Use:               "show <name>",
-		Short:             "Show one profile (secret redacted)",
+		Use:   "show <name>",
+		Short: "Show one profile (secret redacted)",
+		Example: "# Show profile test with its endpoint, env, and client ID\n" +
+			"  100x profile show test",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -291,8 +307,10 @@ func newCmdShow(f *factory.Factory) *cobra.Command {
 
 func newCmdUse(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
-		Use:               "use <name>",
-		Short:             "Set the default profile",
+		Use:   "use <name>",
+		Short: "Set the default profile",
+		Example: "# Make one profile the default for future commands\n" +
+			"  100x profile use test",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -334,8 +352,12 @@ func completeProfileNames(_ *cobra.Command, args []string, _ string) ([]string, 
 
 func newCmdRemove(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
-		Use:               "remove <name>",
-		Short:             "Delete a profile (and its secret)",
+		Use:   "remove <name>",
+		Short: "Delete a profile (and its secret)",
+		Example: "# Remove one profile with confirmation\n" +
+			"  100x profile remove test\n\n" +
+			"# Remove one profile without the confirmation prompt\n" +
+			"  100x profile remove test --yes",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
 		RunE: func(_ *cobra.Command, args []string) error {

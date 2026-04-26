@@ -85,8 +85,8 @@ func Input(title, placeholder string) (string, error) {
 // Confirm asks a yes/no question.
 //
 // Returns def directly in non-tty contexts so callers do not have to special-
-// case CI / pipes; pair with --yes / --dry-run flags to keep behaviour
-// predictable in scripts.
+// case CI / pipes; pair with --yes where needed to keep behaviour predictable
+// in scripts.
 func Confirm(title string, def bool) (bool, error) {
 	if !isatty.IsTerminal(os.Stderr.Fd()) {
 		return def, nil

@@ -33,17 +33,23 @@ func NewCmdClose(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "close <symbol>",
 		Short: "Close part or all of a position (limit or market)",
-		Args:  cobra.ExactArgs(1),
+		Long: "Close part or all of a position.\n\n" +
+			"Market close always closes the full position. Limit close requires both --price and --size.",
+		Example: "# Close size 0.001 of one BTCUSDT position with a limit order at 80000\n" +
+			"  100x futures position close BTCUSDT --position-id <position-id> --price 80000 --size 0.001\n\n" +
+			"# Close the full BTCUSDT position at market without the prompt\n" +
+			"  100x futures position close BTCUSDT --position-id <position-id> --type market --yes",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runClose(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position id")
-	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
-	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Size, "size", "", "size to close")
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client order id")
+	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID; otherwise resolve from symbol")
+	c.Flags().StringVar(&opts.Type, "type", "limit", "execution type: limit | market")
+	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
+	c.Flags().StringVar(&opts.Size, "size", "", "quantity to close")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client-supplied order ID")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }
@@ -54,10 +60,6 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 	case "limit":
 		if opts.Price == "" || opts.Size == "" {
 			return fmt.Errorf("--price and --size are required for limit position close")
-		}
-		if f.DryRun {
-			f.IO.Println("dry-run: limit position close", opts.Symbol, "position", opts.PositionID, "price", opts.Price, "size", opts.Size)
-			return nil
 		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
@@ -81,10 +83,6 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 			})
 		})
 	case "market":
-		if f.DryRun {
-			f.IO.Println("dry-run: market position close", opts.Symbol, "position", opts.PositionID)
-			return nil
-		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err

@@ -30,16 +30,20 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "add <symbol>",
 		Short: "Top up an existing position (limit or market)",
-		Args:  cobra.ExactArgs(1),
+		Example: "# Add size 0.001 to one BTCUSDT position with a limit order at 70000\n" +
+			"  100x futures position add BTCUSDT --position-id <position-id> --price 70000 --size 0.001\n\n" +
+			"# Add size 0.001 to one BTCUSDT position at market\n" +
+			"  100x futures position add BTCUSDT --position-id <position-id> --type market --size 0.001",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runAdd(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position id")
-	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
-	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Size, "size", "", "size to add")
+	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID; otherwise resolve from symbol")
+	c.Flags().StringVar(&opts.Type, "type", "limit", "execution type: limit | market")
+	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
+	c.Flags().StringVar(&opts.Size, "size", "", "quantity to add")
 	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
@@ -51,10 +55,6 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 	case "limit":
 		if opts.Price == "" {
 			return fmt.Errorf("--price is required for limit position add")
-		}
-		if f.DryRun {
-			f.IO.Println("dry-run: limit position add", opts.Symbol, "position", opts.PositionID, "price", opts.Price, "size", opts.Size)
-			return nil
 		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
@@ -78,10 +78,6 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 			})
 		})
 	case "market":
-		if f.DryRun {
-			f.IO.Println("dry-run: market position add", opts.Symbol, "position", opts.PositionID, "size", opts.Size)
-			return nil
-		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err

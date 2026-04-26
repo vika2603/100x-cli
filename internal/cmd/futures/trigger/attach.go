@@ -19,6 +19,10 @@ func NewCmdAttach(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "attach",
 		Short: "Attach SL/TP to an existing order or position",
+		Example: "# Attach a stop-loss leg at 68000 to a BTCUSDT order\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000\n\n" +
+			"# Attach a take-profit leg at 82000 to a BTCUSDT position\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> --type TP --trigger-price 82000",
 	}
 	c.AddCommand(NewCmdAttachOrder(f), NewCmdAttachPosition(f))
 	return c
@@ -42,17 +46,23 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "order <symbol> <order-id>",
 		Short: "Attach an SL or TP leg to a pending order",
-		Args:  cobra.ExactArgs(2),
+		Long: "Attach an SL or TP leg to a pending order.\n\n" +
+			"The gateway applies order-level SL/TP at position scope. The CLI preserves the opposite leg only when the backend can do so safely.",
+		Example: "# Attach a stop-loss leg at 68000 to one pending BTCUSDT order\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000\n\n" +
+			"# Replace the opposite leg while attaching take-profit at 82000\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> --type TP --trigger-price 82000 --clear-other",
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
 			return runAttachOrder(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Leg, "type", "", "SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite leg")
+	c.Flags().StringVar(&opts.Leg, "type", "", "leg to set: SL | TP")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite SL/TP leg")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"SL", "TP"}, cobra.ShellCompDirectiveNoFileComp))
@@ -70,10 +80,6 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 		return err
 	}
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: attach", opts.Leg, "trigger to order", opts.OrderID, "in", opts.Symbol, "at", opts.TriggerPrice)
-		return nil
-	}
 	order, stops, err := readOrderAttachState(ctx, f.Client, opts.Symbol, opts.OrderID)
 	if err != nil {
 		return err
@@ -138,17 +144,21 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "position <symbol> <position-id>",
 		Short: "Attach an SL or TP leg to an open position",
-		Args:  cobra.ExactArgs(2),
+		Example: "# Attach a stop-loss leg at 68000 to one BTCUSDT position\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> --type SL --trigger-price 68000\n\n" +
+			"# Attach a take-profit leg at 82000 to one BTCUSDT position\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> --type TP --trigger-price 82000",
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.PositionID = args[1]
 			return runAttachPosition(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Leg, "type", "", "SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite leg")
+	c.Flags().StringVar(&opts.Leg, "type", "", "leg to set: SL | TP")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite SL/TP leg")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"SL", "TP"}, cobra.ShellCompDirectiveNoFileComp))
@@ -166,10 +176,6 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 		return err
 	}
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: attach", opts.Leg, "trigger to position", opts.PositionID, "in", opts.Symbol, "at", opts.TriggerPrice)
-		return nil
-	}
 	if !opts.ClearOther {
 		existing, err := findPositionTrigger(ctx, f.Client, opts.Symbol, opts.PositionID, leg)
 		if err != nil {

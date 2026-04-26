@@ -27,14 +27,22 @@ func NewCmdPreference(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "preference <symbol>",
 		Short: "Read or update per-market preferences",
-		Args:  cobra.ExactArgs(1),
+		Long: "Read or update per-market preferences.\n\n" +
+			"When updating only one field, the CLI preserves the other field automatically because the gateway expects both values together.",
+		Example: "# Show the current leverage and margin mode for BTCUSDT\n" +
+			"  100x futures position preference BTCUSDT\n\n" +
+			"# Set BTCUSDT leverage to 25 and preserve the current mode\n" +
+			"  100x futures position preference BTCUSDT --leverage 25\n\n" +
+			"# Set BTCUSDT leverage to 25 and mode to CROSS\n" +
+			"  100x futures position preference BTCUSDT --leverage 25 --mode CROSS",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runPreference(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Leverage, "leverage", "", "leverage (preserve when omitted)")
-	c.Flags().StringVar(&opts.Mode, "mode", "", "ISOLATED | CROSS (preserve when omitted)")
+	c.Flags().StringVar(&opts.Leverage, "leverage", "", "target leverage; keep current when omitted")
+	c.Flags().StringVar(&opts.Mode, "mode", "", "margin mode: ISOLATED | CROSS; keep current when omitted")
 	_ = c.RegisterFlagCompletionFunc("mode", cobra.FixedCompletions([]string{"ISOLATED", "CROSS"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }

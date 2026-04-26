@@ -10,8 +10,12 @@ import (
 // NewCmdCompletion returns `<root> completion <shell>`.
 func NewCmdCompletion() *cobra.Command {
 	return &cobra.Command{
-		Use:                   "completion <bash|zsh|fish|powershell>",
-		Short:                 "Generate a shell completion script",
+		Use:   "completion <bash|zsh|fish|powershell>",
+		Short: "Generate a shell completion script",
+		Example: "# Generate a zsh completion script for your user config\n" +
+			"  100x completion zsh > ~/.zsh/completions/_100x\n\n" +
+			"# Install bash completion system-wide\n" +
+			"  100x completion bash > /etc/bash_completion.d/100x",
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),

@@ -33,6 +33,10 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 			"Only attached SL/TP triggers (created via `trigger attach`) can be edited.\n" +
 			"Standalone triggers (created via `trigger place`) cannot be edited; cancel\n" +
 			"and resubmit instead.",
+		Example: "# Change one attached BTCUSDT trigger to price 69000\n" +
+			"  100x futures trigger edit BTCUSDT <trigger-id> --trigger-price 69000\n\n" +
+			"# Change the trigger price to 69000 and use MARK as the trigger feed\n" +
+			"  100x futures trigger edit BTCUSDT <trigger-id> --trigger-price 69000 --trigger-by MARK",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
@@ -41,7 +45,7 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
@@ -53,10 +57,6 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return err
 	}
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: edit trigger", opts.OrderID, "in", opts.Symbol, "trigger", opts.TriggerPrice)
-		return nil
-	}
 	resp, err := f.Client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
 		Market:        opts.Symbol,
 		StopOrderID:   opts.OrderID,

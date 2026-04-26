@@ -29,15 +29,23 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "deals",
 		Short: "List trade-level fill records",
+		Long: "List trade-level fill records.\n\n" +
+			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
+		Example: "# List recent private fills for BTCUSDT with page size 20\n" +
+			"  100x futures order deals --symbol BTCUSDT --page-size 20\n\n" +
+			"# List private BTCUSDT fills from the last 24 hours\n" +
+			"  100x futures order deals --symbol BTCUSDT --since now-24h\n\n" +
+			"# Extract trade id, order id, side, price, size, and pnl as JSON\n" +
+			"  100x --json futures order deals --symbol BTCUSDT --jq 'map({trade_id, order_id, side, price, volume, deal_profit})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runDeals(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "filter by symbol")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show fills for this symbol")
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
 	return c
 }
 

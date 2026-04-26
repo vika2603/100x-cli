@@ -20,6 +20,14 @@ func NewCmdMarket(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "market",
 		Short: "Public market data",
+		Long: "Read public futures market data.\n\n" +
+			"These commands do not place trades or require private credentials. Use them to discover\n" +
+			"symbols, inspect ticker state, read the current order book, list recent public trades,\n" +
+			"or query candle history for charting and diagnostics.",
+		Example: "# Show the latest ticker snapshot for BTCUSDT\n" +
+			"  100x futures market state BTCUSDT\n\n" +
+			"# Show the top 5 bid and ask levels for BTCUSDT\n" +
+			"  100x futures market depth BTCUSDT --limit 5",
 	}
 	c.AddCommand(newCmdList(f), newCmdState(f), newCmdDepth(f), newCmdDeals(f), newCmdKline(f))
 	return c
@@ -30,6 +38,15 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "list",
 		Short: "List all tradable instruments",
+		Long: "List futures markets known to the gateway.\n\n" +
+			"By default the command shows only currently tradable markets. Use\n" +
+			"--include-unavailable to include markets that exist but are not currently available.",
+		Example: "# List only markets that are currently tradable\n" +
+			"  100x futures market list\n\n" +
+			"# Include paused or unavailable markets in the result\n" +
+			"  100x futures market list --include-unavailable\n\n" +
+			"# Extract symbol, tick size, and availability as JSON\n" +
+			"  100x --json futures market list --include-unavailable --jq 'map({symbol: .name, tick_size: .tick_size, available})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			resp, err := f.Client.Market.MarketList(cmd.Context(), futures.MarketListReq{})
 			if err != nil {
@@ -53,7 +70,7 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "show unavailable markets too")
+	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "include markets that are not currently tradable")
 	return c
 }
 
@@ -69,7 +86,17 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "state [symbol]",
 		Short: "Show one or all market states",
-		Args:  cobra.MaximumNArgs(1),
+		Long: "Show ticker-style market state.\n\n" +
+			"Without a symbol, the command prints a table for every market. With a symbol, it prints\n" +
+			"one detailed record including last price, index price, mark price, funding fields, and\n" +
+			"24h change data for that market.",
+		Example: "# Show one state row for every market\n" +
+			"  100x futures market state\n\n" +
+			"# Show the detailed state record for BTCUSDT only\n" +
+			"  100x futures market state BTCUSDT\n\n" +
+			"# Extract symbol, last price, and next funding rate from all markets\n" +
+			"  100x --json futures market state --jq 'map({symbol: .market, last, funding_rate_next})'",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				opts.Symbol = args[0]
@@ -141,7 +168,14 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "depth <symbol>",
 		Short: "Show the order-book snapshot",
-		Args:  cobra.ExactArgs(1),
+		Long: "Show the current order-book snapshot for one symbol.\n\n" +
+			"Use --limit to control how many bid and ask levels are shown. Use --tick-size to request\n" +
+			"merged book levels when you want a less granular view of the market depth.",
+		Example: "# Show the current order book for BTCUSDT\n" +
+			"  100x futures market depth BTCUSDT\n\n" +
+			"# Merge levels by tick size 0.1 and show 20 bids and 20 asks\n" +
+			"  100x futures market depth BTCUSDT --tick-size 0.1 --limit 20",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			resp, err := f.Client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Symbol, Merge: opts.TickSize})
@@ -152,8 +186,8 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(resp, func() error { return printDepth(f.IO, resp) })
 		},
 	}
-	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "price aggregation level")
-	c.Flags().IntVar(&opts.Limit, "limit", 10, "levels per side")
+	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "merge book levels by this tick size")
+	c.Flags().IntVar(&opts.Limit, "limit", 10, "levels to show on each side")
 	return c
 }
 
@@ -163,7 +197,16 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "deals <symbol>",
 		Short: "List the latest public trades",
-		Args:  cobra.ExactArgs(1),
+		Long: "List the latest public trades for one symbol.\n\n" +
+			"This is market-wide trade flow, not your private fills. Use `order deals` when you want\n" +
+			"your account's fill history instead of the public tape.",
+		Example: "# Show the latest public trades for BTCUSDT\n" +
+			"  100x futures market deals BTCUSDT\n\n" +
+			"# Show the latest 50 public trades for BTCUSDT\n" +
+			"  100x futures market deals BTCUSDT --limit 50\n\n" +
+			"# Extract trade id, side, price, and size as JSON\n" +
+			"  100x --json futures market deals BTCUSDT --limit 20 --jq 'map({id, type, price, volume})'",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			symbol = args[0]
 			resp, err := f.Client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: symbol})
@@ -174,7 +217,7 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(resp, func() error { return printMarketDeals(f.IO, resp) })
 		},
 	}
-	c.Flags().IntVar(&limit, "limit", 20, "number of trades to show")
+	c.Flags().IntVar(&limit, "limit", 20, "recent trades to show")
 	return c
 }
 
@@ -194,16 +237,24 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "kline <symbol>",
 		Short: "Get candlestick history",
-		Args:  cobra.ExactArgs(1),
+		Long: "Get candlestick history.\n\n" +
+			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
+		Example: "# Show the latest 20 one-minute candles for BTCUSDT\n" +
+			"  100x futures market kline BTCUSDT --interval 1m --limit 20\n\n" +
+			"# Query five-minute candles for the last hour using relative time expressions\n" +
+			"  100x futures market kline BTCUSDT --since now-1h --until now --interval 5m\n\n" +
+			"# Extract time, open, high, low, and close as JSON\n" +
+			"  100x --json futures market kline BTCUSDT --interval 5m --limit 12 --jq 'map({time, open, high, low, close})'",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runKline(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval")
+	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval, for example 1m or 5m")
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
-	c.Flags().IntVar(&opts.Limit, "limit", 20, "number of latest candles to show")
+	c.Flags().IntVar(&opts.Limit, "limit", 20, "latest candles to show")
 	return c
 }
 

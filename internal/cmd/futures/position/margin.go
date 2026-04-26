@@ -28,15 +28,23 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "margin <symbol>",
 		Short: "Read or adjust isolated-position margin",
-		Args:  cobra.ExactArgs(1),
+		Long: "Read or adjust isolated-position margin.\n\n" +
+			"Without --add or --reduce, the command reads current adjustable margin. With either flag, it performs a write.",
+		Example: "# Read adjustable isolated margin for one BTCUSDT position\n" +
+			"  100x futures position margin BTCUSDT --position-id <position-id>\n\n" +
+			"# Add 10 units of isolated margin to the BTCUSDT position\n" +
+			"  100x futures position margin BTCUSDT --position-id <position-id> --add 10\n\n" +
+			"# Remove 5 units of isolated margin from the BTCUSDT position\n" +
+			"  100x futures position margin BTCUSDT --position-id <position-id> --reduce 5",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runMargin(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position id for read mode")
-	c.Flags().StringVar(&opts.Add, "add", "", "margin amount to add")
-	c.Flags().StringVar(&opts.Reduce, "reduce", "", "margin amount to reduce")
+	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID for read mode; required when the symbol matches multiple positions")
+	c.Flags().StringVar(&opts.Add, "add", "", "amount of isolated margin to add")
+	c.Flags().StringVar(&opts.Reduce, "reduce", "", "amount of isolated margin to remove")
 	return c
 }
 

@@ -27,9 +27,8 @@ type Factory struct {
 	Profile     *config.Profile
 	ProfileName string
 
-	// DryRun and Yes are root-flags surfaced for verbs that need them.
-	DryRun bool
-	Yes    bool
+	// Yes is surfaced for verbs that prompt before destructive actions.
+	Yes bool
 
 	// Timeout caps each HTTP request the SDK makes. Zero means use the
 	// SDK default.

@@ -17,6 +17,13 @@ func NewCmdBalance(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "balance",
 		Short: "Wallet balance and asset history",
+		Long: "Inspect wallet balances and asset movement history.\n\n" +
+			"Use `balance list` for the current account snapshot and `balance history` for paginated\n" +
+			"asset changes such as deposits, withdrawals, and faucet activity.",
+		Example: "# Show the current wallet balance snapshot for every asset\n" +
+			"  100x futures balance list\n\n" +
+			"# Review paginated asset history for USDT\n" +
+			"  100x futures balance history --currency USDT --page-size 20",
 	}
 	c.AddCommand(newCmdList(f), newCmdHistory(f))
 	return c
@@ -34,11 +41,21 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "list",
 		Short: "Show the current wallet snapshot",
+		Long: "Show the current wallet snapshot.\n\n" +
+			"The output includes available balance, frozen balance, margin usage, total balance,\n" +
+			"unrealized PnL, and transferable amount for each asset. Use --currency to narrow the\n" +
+			"view to one asset such as USDT.",
+		Example: "# Show balances for every asset in the wallet\n" +
+			"  100x futures balance list\n\n" +
+			"# Filter the wallet snapshot down to USDT only\n" +
+			"  100x futures balance list --currency USDT\n\n" +
+			"# Extract asset, available, margin, total, and upnl as JSON\n" +
+			"  100x --json futures balance list --jq 'map({asset, available, margin, balance_total, profit_unreal})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "client-side currency filter")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset, for example USDT")
 	return c
 }
 
@@ -82,14 +99,23 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "history",
 		Short: "List asset-change history",
+		Long: "List asset-change history for the current account.\n\n" +
+			"Results are paginated. Use --currency to narrow to one asset and --type to filter by\n" +
+			"business type such as deposit, withdraw, or faucet.",
+		Example: "# Show recent USDT balance history with 20 items per page\n" +
+			"  100x futures balance history --currency USDT --page-size 20\n\n" +
+			"# Show only faucet records in USDT balance history\n" +
+			"  100x futures balance history --currency USDT --type faucet\n\n" +
+			"# Extract time, business type, and balance change as JSON\n" +
+			"  100x --json futures balance history --currency USDT --jq 'map({time, business, change})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runHistory(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "filter by currency (e.g. USDT)")
-	c.Flags().StringVar(&opts.Type, "type", "", "filter by business type (deposit | withdraw | faucet)")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset (for example USDT)")
+	c.Flags().StringVar(&opts.Type, "type", "", "business type: deposit | withdraw | faucet")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"deposit", "withdraw", "faucet"}, cobra.ShellCompDirectiveNoFileComp))
 	return c
 }

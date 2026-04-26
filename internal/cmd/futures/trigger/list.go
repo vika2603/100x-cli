@@ -27,15 +27,21 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "list <symbol>",
 		Short: "List active or finished triggers",
-		Args:  cobra.ExactArgs(1),
+		Example: "# List active BTCUSDT triggers\n" +
+			"  100x futures trigger list BTCUSDT\n\n" +
+			"# List finished BTCUSDT triggers with page size 50\n" +
+			"  100x futures trigger list BTCUSDT --finished --page-size 50\n\n" +
+			"# Extract trigger id, type, side, trigger price, and status as JSON\n" +
+			"  100x --json futures trigger list BTCUSDT --jq 'map({contract_order_id, contract_order_type, side, trigger_price, status})'",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().BoolVar(&opts.Finished, "finished", false, "list finished triggers")
+	c.Flags().BoolVar(&opts.Finished, "finished", false, "show finished triggers instead of active triggers")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 100, "page size")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
 	return c
 }
 

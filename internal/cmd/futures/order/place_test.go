@@ -36,29 +36,6 @@ func TestRunPlaceLimit(t *testing.T) {
 	}
 }
 
-// TestRunPlaceMarketDryRun verifies --dry-run does not call the SDK.
-func TestRunPlaceMarketDryRun(t *testing.T) {
-	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	f := &factory.Factory{
-		Client: futures.NewWithDoer(fake.New()),
-		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
-		DryRun: true,
-	}
-	opts := &PlaceOptions{
-		Type: "market", Symbol: "BTCUSDT", Side: "sell", Size: "0.1",
-		Factory: f,
-	}
-	if err := runPlace(context.Background(), opts); err != nil {
-		t.Fatal(err)
-	}
-	if stdout.Len() != 0 {
-		t.Errorf("dry-run wrote to stdout: %q", stdout.String())
-	}
-	if !strings.Contains(stderr.String(), "dry-run") {
-		t.Errorf("stderr missing dry-run notice: %q", stderr.String())
-	}
-}
-
 // TestRunPlaceUnknownType errors out before calling the SDK.
 func TestRunPlaceUnknownType(t *testing.T) {
 	f := &factory.Factory{

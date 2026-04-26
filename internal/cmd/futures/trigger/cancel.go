@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -27,7 +26,11 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "cancel <symbol> <trigger-id> [<trigger-id>...]",
 		Short: "Cancel one or more pending triggers",
-		Args:  cobra.MinimumNArgs(2),
+		Example: "# Cancel one pending BTCUSDT trigger after a confirmation prompt\n" +
+			"  100x futures trigger cancel BTCUSDT <trigger-id>\n\n" +
+			"# Cancel two pending BTCUSDT triggers immediately without the prompt\n" +
+			"  100x futures trigger cancel BTCUSDT <id-1> <id-2> --yes",
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderIDs = args[1:]
@@ -39,10 +42,6 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: cancel triggers", strings.Join(opts.OrderIDs, ","), "in", opts.Symbol)
-		return nil
-	}
 	if err := confirmCancelTriggers(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
@@ -89,7 +88,11 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "cancel-all <symbol>",
 		Short: "Cancel every active trigger in one market",
-		Args:  cobra.ExactArgs(1),
+		Example: "# Cancel every active BTCUSDT trigger after a confirmation prompt\n" +
+			"  100x futures trigger cancel-all BTCUSDT\n\n" +
+			"# Cancel every active BTCUSDT trigger immediately without the prompt\n" +
+			"  100x futures trigger cancel-all BTCUSDT --yes",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runCancelAll(cmd.Context(), opts)
@@ -100,10 +103,6 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: cancel all active triggers in", opts.Symbol)
-		return nil
-	}
 	ok, err := prompt.ConfirmDestructive(
 		fmt.Sprintf("Cancel every active trigger in %s?", opts.Symbol), f.Yes)
 	if err != nil {

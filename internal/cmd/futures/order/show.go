@@ -26,7 +26,9 @@ func NewCmdShow(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "show <symbol> <order-id>",
 		Short: "Show one order's full record",
-		Args:  cobra.ExactArgs(2),
+		Example: "# Show one BTCUSDT order with status, SL/TP, client id, and timestamps\n" +
+			"  100x futures order show BTCUSDT <order-id>",
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]

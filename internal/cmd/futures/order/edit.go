@@ -29,15 +29,19 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "edit <symbol> <order-id>",
 		Short: "Modify an open limit order",
-		Args:  cobra.ExactArgs(2),
+		Long: "Modify an open limit order.\n\n" +
+			"The gateway rebooks edited limit orders as a new order id. The CLI preserves attached SL/TP only when the backend can do so safely.",
+		Example: "# Rebook one BTCUSDT order to price 70500 and size 0.002\n" +
+			"  100x futures order edit BTCUSDT <order-id> --price 70500 --size 0.002",
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
 			return runEdit(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Price, "price", "", "new price")
-	c.Flags().StringVar(&opts.Size, "size", "", "new size")
+	c.Flags().StringVar(&opts.Price, "price", "", "new limit price")
+	c.Flags().StringVar(&opts.Size, "size", "", "new order quantity")
 	_ = c.MarkFlagRequired("price")
 	_ = c.MarkFlagRequired("size")
 	return c
@@ -48,10 +52,6 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return fmt.Errorf("order edit: --price and --size are required")
 	}
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: edit order", opts.OrderID, "in", opts.Symbol, "price", opts.Price, "size", opts.Size)
-		return nil
-	}
 	protection, err := readOrderProtection(ctx, f.Client, opts.Symbol, opts.OrderID)
 	if err != nil {
 		return err

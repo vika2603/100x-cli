@@ -17,6 +17,18 @@ func NewCmdOrder(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "order",
 		Short: "Limit/market order operations",
+		Long: "Place, inspect, modify, and cancel futures orders.\n\n" +
+			"Use `order place` for new orders, `order list` and `order show` to inspect existing\n" +
+			"orders, `order edit` to rebook an open limit order, and `order cancel` / `cancel-all`\n" +
+			"to remove open orders. Use `order deals` when you want private fill history.\n\n" +
+			"Symbols are positional arguments. Order ids are also positional when a command acts on\n" +
+			"a specific order.",
+		Example: "# List open orders for BTCUSDT only\n" +
+			"  100x futures order list --symbol BTCUSDT\n\n" +
+			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
+			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001\n\n" +
+			"# Cancel one open BTCUSDT order by id\n" +
+			"  100x futures order cancel BTCUSDT <order-id>",
 	}
 	c.AddCommand(
 		NewCmdPlace(f),

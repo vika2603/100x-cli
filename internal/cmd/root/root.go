@@ -32,7 +32,6 @@ type globalFlags struct {
 	jq      string
 	quiet   bool
 	yes     bool
-	dryRun  bool
 	color   string
 	timeout time.Duration
 }
@@ -48,25 +47,44 @@ type ErrorEmitter func(err error, code int, codeString string)
 // emitter must be called by main.go once Execute returns an error so
 // the format respects --json.
 func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
+	cobra.EnableCommandSorting = false
+
 	gf := &globalFlags{}
 	f := &factory.Factory{}
 
 	cmd := &cobra.Command{
-		Use:           "100x",
-		Short:         "100x futures-trading CLI",
+		Use:   "100x",
+		Short: "100x futures-trading CLI",
+		Long: "Use 100x from the terminal for market data, balances, orders, triggers, and positions.\n\n" +
+			"Private commands read credentials from a named profile. A profile stores user identity\n" +
+			"and env selection; endpoint settings live under [env.<name>] in config. Public market\n" +
+			"commands can run without private credentials as long as an endpoint is configured.\n\n" +
+			"Human output is designed for terminal use. Add --json for machine-readable output, and\n" +
+			"use --jq to filter that JSON when scripting. Use --help on any subcommand to inspect\n" +
+			"required arguments, default values, examples, and command-specific notes.",
+		Example: "# Add a test profile named test, using env test and storing the secret in the keychain\n" +
+			"  100x profile add test --env test --client-id <CID>\n\n" +
+			"# Show the latest ticker-style state for BTCUSDT\n" +
+			"  100x futures market state BTCUSDT\n\n" +
+			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
+			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001",
 		Version:       version.Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	cmd.AddGroup(
+		&cobra.Group{ID: "core", Title: "Core Commands"},
+		&cobra.Group{ID: "auth", Title: "Auth Commands"},
+		&cobra.Group{ID: "tools", Title: "Tooling"},
+	)
 
-	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "credential profile to use")
-	cmd.PersistentFlags().BoolVar(&gf.jsonOut, "json", false, "emit JSON to stdout")
-	cmd.PersistentFlags().StringVar(&gf.jq, "jq", "", "gojq expression applied to JSON output")
-	cmd.PersistentFlags().BoolVarP(&gf.quiet, "quiet", "q", false, "suppress non-essential stdout")
-	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "auto-approve destructive prompts")
-	cmd.PersistentFlags().BoolVar(&gf.dryRun, "dry-run", false, "show actions without sending")
-	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "color mode: auto | always | never (NO_COLOR honoured)")
-	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 30*time.Second, "per-request HTTP timeout")
+	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "use credentials from profile <name>")
+	cmd.PersistentFlags().BoolVar(&gf.jsonOut, "json", false, "write JSON to stdout")
+	cmd.PersistentFlags().StringVar(&gf.jq, "jq", "", "run a gojq expression against JSON output")
+	cmd.PersistentFlags().BoolVarP(&gf.quiet, "quiet", "q", false, "hide human-readable stdout")
+	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "answer yes to confirmation prompts")
+	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "color mode: auto | always | never (NO_COLOR honored)")
+	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 30*time.Second, "HTTP timeout per request")
 	_ = cmd.RegisterFlagCompletionFunc("color", cobra.FixedCompletions([]string{"auto", "always", "never"}, cobra.ShellCompDirectiveNoFileComp))
 
 	cmd.PersistentPreRunE = func(c *cobra.Command, _ []string) error {
@@ -76,7 +94,6 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 				return err
 			}
 			f.IO = r
-			f.DryRun = gf.dryRun
 			f.Yes = gf.yes
 			return nil
 		}
@@ -86,12 +103,16 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		return populate(f, gf)
 	}
 
-	cmd.AddCommand(
-		futuresGroup.NewCmdFutures(f),
-		profile.NewCmdProfile(f),
-		completion.NewCmdCompletion(),
-		newCmdVersion(f),
-	)
+	futuresCmd := futuresGroup.NewCmdFutures(f)
+	futuresCmd.GroupID = "core"
+	profileCmd := profile.NewCmdProfile(f)
+	profileCmd.GroupID = "auth"
+	completionCmd := completion.NewCmdCompletion()
+	completionCmd.GroupID = "tools"
+	versionCmd := newCmdVersion(f)
+	versionCmd.GroupID = "tools"
+	cmd.AddCommand(futuresCmd, profileCmd, completionCmd, versionCmd)
+	configureHelp(cmd)
 
 	emit := func(err error, _ int, codeString string) {
 		if gf.jsonOut || gf.jq != "" {
@@ -191,6 +212,8 @@ func newCmdVersion(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
+		Example: "# Print the CLI version, commit, and build date\n" +
+			"  100x version",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			payload := versionPayload{
 				Version:   version.Version,
@@ -226,7 +249,6 @@ func populate(f *factory.Factory, gf *globalFlags) error {
 		return err
 	}
 	f.IO = r
-	f.DryRun = gf.dryRun
 	f.Yes = gf.yes
 	f.Timeout = gf.timeout
 
@@ -272,7 +294,6 @@ func populatePublic(f *factory.Factory, gf *globalFlags) error {
 		return err
 	}
 	f.IO = r
-	f.DryRun = gf.dryRun
 	f.Yes = gf.yes
 	f.Timeout = gf.timeout
 

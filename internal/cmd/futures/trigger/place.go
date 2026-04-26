@@ -29,18 +29,24 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "place <symbol>",
 		Short: "Place a standalone trigger (condition order)",
-		Args:  cobra.ExactArgs(1),
+		Long: "Place a standalone trigger (condition order).\n\n" +
+			"The CLI fetches the current price automatically when needed for gateway validation.",
+		Example: "# Place a BUY trigger on BTCUSDT that executes at market when 65000 is reached\n" +
+			"  100x futures trigger place BTCUSDT --side buy --trigger-price 65000 --size 0.001\n\n" +
+			"# Place a SELL trigger that submits a limit order at 81950 when 82000 is reached\n" +
+			"  100x futures trigger place BTCUSDT --side sell --trigger-price 82000 --limit-price 81950 --size 0.001",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Side, "side", "", "buy | sell")
-	c.Flags().StringVar(&opts.Size, "size", "", "order size")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "LAST | INDEX | MARK")
-	c.Flags().StringVar(&opts.LimitPrice, "limit-price", "", "limit price after trigger (omit = market)")
-	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "current-price snapshot")
+	c.Flags().StringVar(&opts.Side, "side", "", "triggered order side: buy | sell")
+	c.Flags().StringVar(&opts.Size, "size", "", "triggered order quantity")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "price that activates this trigger")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.LimitPrice, "limit-price", "", "limit price after the trigger fires; omit for market execution")
+	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "override the current price snapshot for testing")
 	_ = c.Flags().MarkHidden("current-price")
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")
@@ -60,10 +66,6 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return err
 	}
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: place trigger", opts.Symbol, opts.Side, "trigger", opts.TriggerPrice, "size", opts.Size)
-		return nil
-	}
 	currentPrice := opts.CurrentPrice
 	if currentPrice == "" {
 		currentPrice, err = fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)

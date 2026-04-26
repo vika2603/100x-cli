@@ -27,7 +27,11 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "cancel <symbol> <order-id> [<order-id>...]",
 		Short: "Cancel one or more orders",
-		Args:  cobra.MinimumNArgs(2),
+		Example: "# Cancel one open BTCUSDT order after a confirmation prompt\n" +
+			"  100x futures order cancel BTCUSDT <order-id>\n\n" +
+			"# Cancel two BTCUSDT orders immediately without the prompt\n" +
+			"  100x futures order cancel BTCUSDT <id-1> <id-2> --yes",
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderIDs = args[1:]
@@ -44,10 +48,6 @@ type cancelResult struct {
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: cancel orders", strings.Join(opts.OrderIDs, ","), "in", opts.Symbol)
-		return nil
-	}
 	if err := confirmCancelOrders(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
@@ -122,7 +122,11 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "cancel-all <symbol>",
 		Short: "Cancel every open order in one market",
-		Args:  cobra.ExactArgs(1),
+		Example: "# Cancel every open BTCUSDT order after a confirmation prompt\n" +
+			"  100x futures order cancel-all BTCUSDT\n\n" +
+			"# Cancel every open BTCUSDT order immediately without the prompt\n" +
+			"  100x futures order cancel-all BTCUSDT --yes",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runCancelAll(cmd.Context(), opts)
@@ -133,10 +137,6 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	f := opts.Factory
-	if f.DryRun {
-		f.IO.Println("dry-run: cancel all open orders in", opts.Symbol)
-		return nil
-	}
 	ok, err := prompt.ConfirmDestructive(
 		fmt.Sprintf("Cancel every open order in %s?", opts.Symbol), f.Yes)
 	if err != nil {

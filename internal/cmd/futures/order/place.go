@@ -39,22 +39,28 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "place <symbol>",
 		Short: "Place a limit or market order",
-		Args:  cobra.ExactArgs(1),
+		Example: "# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
+			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001\n\n" +
+			"# Place a SELL market order on BTCUSDT for size 0.001\n" +
+			"  100x futures order place BTCUSDT --type market --side sell --size 0.001\n\n" +
+			"# Place a BUY limit order and attach SL 68000 plus TP 76000\n" +
+			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001 --sl 68000 --tp 76000",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Type, "type", "limit", "limit | market")
-	c.Flags().StringVar(&opts.Side, "side", "", "buy | sell")
-	c.Flags().StringVar(&opts.Price, "price", "", "limit price (limit only)")
-	c.Flags().StringVar(&opts.Size, "size", "", "order size")
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "optional client-side order id")
-	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "GTC | IOC | FOK | POST_ONLY")
-	c.Flags().StringVar(&opts.SL, "sl", "", "stop-loss trigger price")
-	c.Flags().StringVar(&opts.SLBy, "sl-by", "LAST", "LAST | INDEX | MARK")
-	c.Flags().StringVar(&opts.TP, "tp", "", "take-profit trigger price")
-	c.Flags().StringVar(&opts.TPBy, "tp-by", "LAST", "LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.Type, "type", "limit", "order type: limit | market")
+	c.Flags().StringVar(&opts.Side, "side", "", "order side: buy | sell")
+	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
+	c.Flags().StringVar(&opts.Size, "size", "", "order quantity")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client-supplied order ID")
+	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "time in force for limit orders: GTC | IOC | FOK | POST_ONLY")
+	c.Flags().StringVar(&opts.SL, "sl", "", "attach stop-loss at this price")
+	c.Flags().StringVar(&opts.SLBy, "sl-by", "LAST", "stop-loss price feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.TP, "tp", "", "attach take-profit at this price")
+	c.Flags().StringVar(&opts.TPBy, "tp-by", "LAST", "take-profit price feed: LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
@@ -88,10 +94,6 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		if opts.Price == "" {
 			return fmt.Errorf("--price is required for limit orders")
 		}
-		if f.DryRun {
-			f.IO.Println("dry-run: limit", opts.Symbol, opts.Side, opts.Price, "size", opts.Size)
-			return nil
-		}
 		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
 			Market:        opts.Symbol,
 			Side:          side,
@@ -114,10 +116,6 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			})
 		})
 	case "market":
-		if f.DryRun {
-			f.IO.Println("dry-run: market", opts.Symbol, opts.Side, "size", opts.Size)
-			return nil
-		}
 		resp, err := f.Client.Order.MarketOrder(ctx, futures.MarketOrderReq{
 			Market:        opts.Symbol,
 			Side:          side,
