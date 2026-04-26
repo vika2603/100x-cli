@@ -9,10 +9,10 @@ import (
 // AppName is the directory leaf used inside XDG paths.
 const AppName = "100x"
 
-// ConfigDir returns the directory where config.toml lives.
+// Dir returns the directory where config.toml lives.
 //
 // Honours $XDG_CONFIG_HOME, falling back to $HOME/.config.
-func ConfigDir() string {
+func Dir() string {
 	if d := os.Getenv("XDG_CONFIG_HOME"); d != "" {
 		return filepath.Join(d, AppName)
 	}
@@ -22,14 +22,14 @@ func ConfigDir() string {
 	return filepath.Join(".", "."+AppName)
 }
 
-// ConfigFile is the path to the TOML profile file.
-func ConfigFile() string {
-	return filepath.Join(ConfigDir(), "config.toml")
+// File is the path to the TOML profile file.
+func File() string {
+	return filepath.Join(Dir(), "config.toml")
 }
 
 // CredentialsDir is the per-profile secret-file fallback directory.
 //
 // Used when the OS keychain is unavailable. Files inside MUST be chmod 600.
 func CredentialsDir() string {
-	return filepath.Join(ConfigDir(), "credentials")
+	return filepath.Join(Dir(), "credentials")
 }

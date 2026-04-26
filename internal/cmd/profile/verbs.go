@@ -56,7 +56,7 @@ func newCmdAdd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "add",
 		Short: "Add or update a profile",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runAdd(opts)
 		},
 	}
@@ -105,7 +105,7 @@ func newCmdList() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List configured profiles",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
@@ -128,7 +128,7 @@ func newCmdUse() *cobra.Command {
 		Short:             "Set the default profile",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
@@ -165,7 +165,7 @@ func newCmdShow() *cobra.Command {
 		Short:             "Show one profile (secret redacted)",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err
@@ -186,7 +186,7 @@ func newCmdRemove(f *factory.Factory) *cobra.Command {
 		Short:             "Delete a profile (and its secret)",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
 				return err

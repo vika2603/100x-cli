@@ -12,7 +12,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
-
 // CancelOptions captures the flag-bound state of `order cancel`.
 type CancelOptions struct {
 	Market   string

@@ -46,7 +46,7 @@ func New(endpoint string, creds Credentials, httpClient *http.Client) *Client {
 			r.SetTimeout(httpClient.Timeout)
 		}
 		if httpClient.Transport != nil {
-			r.GetTransport().WrapRoundTripFunc(func(rt http.RoundTripper) req.HttpRoundTripFunc {
+			r.GetTransport().WrapRoundTripFunc(func(_ http.RoundTripper) req.HttpRoundTripFunc {
 				return httpClient.Transport.RoundTrip
 			})
 		}
@@ -152,9 +152,9 @@ func newNonce() (string, error) {
 }
 
 func truncate(b []byte) string {
-	const max = 256
-	if len(b) > max {
-		return string(b[:max]) + "..."
+	const maxLen = 256
+	if len(b) > maxLen {
+		return string(b[:maxLen]) + "..."
 	}
 	return string(b)
 }

@@ -9,7 +9,7 @@ import (
 
 // TestFakeImplementsDoer is a compile-time assertion guarded by a runtime
 // test so refactors that drift the fake away from futures.Doer fail loudly.
-func TestFakeImplementsDoer(t *testing.T) {
+func TestFakeImplementsDoer(_ *testing.T) {
 	var _ futures.Doer = New()
 }
 

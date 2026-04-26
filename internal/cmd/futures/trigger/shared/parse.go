@@ -40,6 +40,7 @@ func ParsePriceType(s string) (futures.StopTriggerType, error) {
 // Leg is which leg an attach request is updating.
 type Leg int
 
+// Leg values.
 const (
 	LegSL Leg = iota
 	LegTP

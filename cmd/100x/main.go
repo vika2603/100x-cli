@@ -1,3 +1,4 @@
+// Command 100x is the entrypoint binary for the 100x futures-trading CLI.
 package main
 
 import (
@@ -19,20 +20,26 @@ func main() {
 	// would otherwise terminate the process with a "broken pipe" error
 	// the first time it tried to write to a closed stdout.
 	signal.Ignore(syscall.SIGPIPE)
+	os.Exit(run())
+}
 
+// run owns the deferred signal-context teardown so os.Exit never bypasses it.
+func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	cmd, emitErr := root.NewCmdRoot()
-	if err := cmd.ExecuteContext(ctx); err != nil {
-		if errors.Is(err, syscall.EPIPE) {
-			// Downstream consumer closed its stdin; nothing more to write.
-			os.Exit(exit.OK)
-		}
-		code, codeString := classify(err)
-		emitErr(err, code, codeString)
-		os.Exit(code)
+	err := cmd.ExecuteContext(ctx)
+	if err == nil {
+		return exit.OK
 	}
+	if errors.Is(err, syscall.EPIPE) {
+		// Downstream consumer closed its stdin; nothing more to write.
+		return exit.OK
+	}
+	code, codeString := classify(err)
+	emitErr(err, code, codeString)
+	return code
 }
 
 // classify maps an error to (exit code, stable string code). The string

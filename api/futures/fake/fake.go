@@ -43,7 +43,7 @@ func New() *Doer {
 }
 
 // Get satisfies futures.Doer for read endpoints.
-func (d *Doer) Get(ctx context.Context, path string, in, out any) error {
+func (d *Doer) Get(_ context.Context, path string, in, out any) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -146,7 +146,7 @@ func (d *Doer) Get(ctx context.Context, path string, in, out any) error {
 }
 
 // Post satisfies futures.Doer for write endpoints.
-func (d *Doer) Post(ctx context.Context, path string, in, out any) error {
+func (d *Doer) Post(_ context.Context, path string, in, out any) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -220,7 +220,7 @@ func (d *Doer) Post(ctx context.Context, path string, in, out any) error {
 		}
 		s.Status = futures.StopOrderStatusCanceled
 		d.stops[id] = s
-		return assignOut(out, futures.StopOrderCancelResp{OrderID: int64(id)})
+		return assignOut(out, futures.StopOrderCancelResp{OrderID: id})
 
 	case "/open/api/v2/order/stop/cancel/all":
 		req := in.(futures.StopOrderCancelAllReq)
@@ -262,7 +262,7 @@ func (d *Doer) Post(ctx context.Context, path string, in, out any) error {
 			s.TriggerType = req.StopPriceType
 		}
 		d.stops[id] = s
-		return assignOut(out, futures.StopOrderEditResp{OrderID: int64(id)})
+		return assignOut(out, futures.StopOrderEditResp{OrderID: id})
 
 	case "/open/api/v2/order/close/stop":
 		return assignOut(out, futures.StopOrderCloseResp{})

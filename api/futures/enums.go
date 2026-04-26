@@ -3,6 +3,7 @@ package futures
 // Side identifies the trade direction. Wire format: int.
 type Side int
 
+// Side values.
 const (
 	SideSell Side = 1
 	SideBuy  Side = 2
@@ -22,6 +23,7 @@ func (s Side) String() string {
 // TIF is the order time-in-force. Wire format: int.
 type TIF int
 
+// TIF values.
 const (
 	TIFGTC      TIF = 0
 	TIFFOK      TIF = 1
@@ -47,6 +49,7 @@ func (t TIF) String() string {
 // OrderStatus is the lifecycle state of a regular order. Wire format: int.
 type OrderStatus int
 
+// OrderStatus values.
 const (
 	OrderStatusPending         OrderStatus = 1
 	OrderStatusPartial         OrderStatus = 2
@@ -75,6 +78,7 @@ func (s OrderStatus) String() string {
 // StopOrderStatus is the lifecycle state of a condition order. Wire format: int.
 type StopOrderStatus int
 
+// StopOrderStatus values.
 const (
 	StopOrderStatusUnactivated StopOrderStatus = 1
 	StopOrderStatusUntriggered StopOrderStatus = 2
@@ -103,6 +107,7 @@ func (s StopOrderStatus) String() string {
 // StopOrderType (wire field: contract_order_type) categorises a condition order.
 type StopOrderType int
 
+// StopOrderType values.
 const (
 	StopOrderTypeStandalone         StopOrderType = 0
 	StopOrderTypePositionTakeProfit StopOrderType = 1
@@ -131,6 +136,7 @@ func (t StopOrderType) String() string {
 // StopTriggerType selects which price feed a trigger watches. Wire format: int.
 type StopTriggerType int
 
+// StopTriggerType values.
 const (
 	StopTriggerTypeLast  StopTriggerType = 1
 	StopTriggerTypeIndex StopTriggerType = 2
@@ -153,6 +159,7 @@ func (t StopTriggerType) String() string {
 // PositionType is cross vs isolated margining. Wire format: int.
 type PositionType int
 
+// PositionType values.
 const (
 	PositionTypeCross    PositionType = 1
 	PositionTypeIsolated PositionType = 2
@@ -172,6 +179,7 @@ func (p PositionType) String() string {
 // MarginAction selects whether an AdjustPositionMarginReq adds or removes margin.
 type MarginAction int
 
+// MarginAction values.
 const (
 	MarginActionAdd    MarginAction = 1
 	MarginActionRemove MarginAction = 2

@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -91,7 +92,7 @@ func TestPostSendsBodyAndAuth(t *testing.T) {
 
 // TestEnvelopeNonZeroReturnsAPIError ensures non-zero codes surface as APIError.
 func TestEnvelopeNonZeroReturnsAPIError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"code":20001,"message":"bad params","data":null}`))
 	}))
 	defer srv.Close()
@@ -103,8 +104,8 @@ func TestEnvelopeNonZeroReturnsAPIError(t *testing.T) {
 	if !strings.Contains(err.Error(), "20001") || !strings.Contains(err.Error(), "bad params") {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	ae, ok := err.(*APIError)
-	if !ok {
+	var ae *APIError
+	if !errors.As(err, &ae) {
 		t.Fatalf("err type = %T, want *APIError", err)
 	}
 	if ae.Code != 20001 {

@@ -19,6 +19,7 @@ import (
 // Format selects how Render serialises a payload.
 type Format int
 
+// Format values.
 const (
 	FormatHuman Format = iota
 	FormatJSON

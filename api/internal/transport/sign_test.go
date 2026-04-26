@@ -27,11 +27,11 @@ func TestSignDeterministic(t *testing.T) {
 // template.
 func TestSignDifferentInputsDiffer(t *testing.T) {
 	cases := []struct {
-		name                    string
-		key1, cid1, nonce1      string
-		ts1                     int64
-		key2, cid2, nonce2      string
-		ts2                     int64
+		name               string
+		key1, cid1, nonce1 string
+		ts1                int64
+		key2, cid2, nonce2 string
+		ts2                int64
 	}{
 		{"key", "k1", "c", "n", 1, "k2", "c", "n", 1},
 		{"clientID", "k", "c1", "n", 1, "k", "c2", "n", 1},

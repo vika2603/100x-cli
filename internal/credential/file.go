@@ -26,7 +26,7 @@ func (s fileStore) Save(profile, secret string) error {
 
 func (s fileStore) Load(profile string) (string, error) {
 	p := s.path(profile)
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(p) // #nosec G304 -- p is XDG-derived plus filepath.Base(profile), not arbitrary input
 	if errors.Is(err, os.ErrNotExist) {
 		return "", ErrNotFound
 	}

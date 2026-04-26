@@ -13,27 +13,27 @@ package futures
 
 // OrderItem is the canonical regular-order shape (limit/market).
 type OrderItem struct {
-	OrderID         int64       `url:"order_id" json:"order_id"`
-	PositionID      int64       `url:"position_id" json:"position_id"`
-	Market          string      `url:"market" json:"market"`
-	Type            int         `url:"type" json:"type"`
-	Side            Side        `url:"side" json:"side"`
-	Status          OrderStatus `url:"status" json:"status"`
+	OrderID         int64        `url:"order_id" json:"order_id"`
+	PositionID      int64        `url:"position_id" json:"position_id"`
+	Market          string       `url:"market" json:"market"`
+	Type            int          `url:"type" json:"type"`
+	Side            Side         `url:"side" json:"side"`
+	Status          OrderStatus  `url:"status" json:"status"`
 	PositionType    PositionType `url:"position_type" json:"position_type"`
-	Volume          string      `url:"volume" json:"volume"`
-	Left            string      `url:"left" json:"left"`
-	Filled          string      `url:"filled" json:"filled"`
-	Price           string      `url:"price" json:"price"`
-	AvgPrice        string      `url:"avg_price" json:"avg_price"`
-	DealStock       string      `url:"deal_stock" json:"deal_stock"`
-	DealFee         string      `url:"deal_fee" json:"deal_fee"`
-	Leverage        string      `url:"leverage" json:"leverage"`
-	StopLossPrice   string      `url:"stop_loss_price" json:"stop_loss_price"`
-	TakeProfitPrice string      `url:"take_profit_price" json:"take_profit_price"`
-	ClientOID       string      `url:"client_oid" json:"client_oid"`
-	Target          int         `url:"target" json:"target"`
-	CreateTime      float64     `url:"create_time" json:"create_time"`
-	UpdateTime      float64     `url:"update_time" json:"update_time"`
+	Volume          string       `url:"volume" json:"volume"`
+	Left            string       `url:"left" json:"left"`
+	Filled          string       `url:"filled" json:"filled"`
+	Price           string       `url:"price" json:"price"`
+	AvgPrice        string       `url:"avg_price" json:"avg_price"`
+	DealStock       string       `url:"deal_stock" json:"deal_stock"`
+	DealFee         string       `url:"deal_fee" json:"deal_fee"`
+	Leverage        string       `url:"leverage" json:"leverage"`
+	StopLossPrice   string       `url:"stop_loss_price" json:"stop_loss_price"`
+	TakeProfitPrice string       `url:"take_profit_price" json:"take_profit_price"`
+	ClientOID       string       `url:"client_oid" json:"client_oid"`
+	Target          int          `url:"target" json:"target"`
+	CreateTime      float64      `url:"create_time" json:"create_time"`
+	UpdateTime      float64      `url:"update_time" json:"update_time"`
 }
 
 // StopOrderItem is the canonical condition-order shape.
