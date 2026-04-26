@@ -71,7 +71,7 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint for --env; stored as a global env mapping")
+	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "API endpoint for --env; stored under [env.<name>]")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client_id issued by the gateway")
 	c.Flags().StringVar(&opts.Env, "env", config.DefaultEnv, "environment label selecting the endpoint")
 	c.Flags().StringVar(&opts.Secret, "secret", "", "API secret (omit to be prompted)")

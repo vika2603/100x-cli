@@ -13,8 +13,8 @@ import (
 // DefaultEnv is the environment assumed by profile add when --env is omitted.
 const DefaultEnv = "test"
 
-var defaultEndpoints = map[string]string{
-	"test": "https://api.lyantechinnovation.com/",
+var defaultEnv = map[string]EnvConfig{
+	"test": {Endpoint: "https://api.lyantechinnovation.com/"},
 }
 
 // Profile is one named credential binding.
@@ -24,18 +24,24 @@ var defaultEndpoints = map[string]string{
 // keyed by the profile name.
 type Profile struct {
 	ClientID string `toml:"client_id"`
-	// Env selects the endpoint from Config.Endpoints or the built-in defaults.
+	// Env selects the environment settings from Config.Env or the built-ins.
 	Env string `toml:"env"`
+}
+
+// EnvConfig stores environment-level settings, such as API endpoint and
+// future per-env transport limits.
+type EnvConfig struct {
+	Endpoint string `toml:"endpoint"`
 }
 
 // Config is the top-level TOML document.
 type Config struct {
-	Default   string             `toml:"default"`
-	Endpoints map[string]string  `toml:"endpoints"`
-	Profiles  map[string]Profile `toml:"profiles"`
+	Default  string               `toml:"default"`
+	Env      map[string]EnvConfig `toml:"env"`
+	Profiles map[string]Profile   `toml:"profiles"`
 }
 
-// NormalizeEnv canonicalises env names used as endpoint-map keys.
+// NormalizeEnv canonicalises env names used as env-map keys.
 func NormalizeEnv(env string) string {
 	env = strings.TrimSpace(strings.ToLower(env))
 	if env == "" {
@@ -48,13 +54,15 @@ func NormalizeEnv(env string) string {
 // built-in defaults.
 func EndpointForEnv(c *Config, env string) (string, error) {
 	env = NormalizeEnv(env)
-	if c != nil && c.Endpoints != nil {
-		if endpoint := strings.TrimSpace(c.Endpoints[env]); endpoint != "" {
+	if c != nil && c.Env != nil {
+		if endpoint := strings.TrimSpace(c.Env[env].Endpoint); endpoint != "" {
 			return endpoint, nil
 		}
 	}
-	if endpoint := defaultEndpoints[env]; endpoint != "" {
-		return endpoint, nil
+	if cfg, ok := defaultEnv[env]; ok {
+		if endpoint := strings.TrimSpace(cfg.Endpoint); endpoint != "" {
+			return endpoint, nil
+		}
 	}
 	return "", fmt.Errorf("no endpoint configured for env %q", env)
 }
@@ -67,10 +75,13 @@ func EndpointForProfile(c *Config, p *Profile) (string, error) {
 	return EndpointForEnv(c, p.Env)
 }
 
-// SetEndpoint sets or overrides the global endpoint for env.
+// SetEndpoint sets or overrides the endpoint inside the env config.
 func SetEndpoint(c *Config, env, endpoint string) {
-	if c.Endpoints == nil {
-		c.Endpoints = map[string]string{}
+	if c.Env == nil {
+		c.Env = map[string]EnvConfig{}
 	}
-	c.Endpoints[NormalizeEnv(env)] = strings.TrimSpace(endpoint)
+	env = NormalizeEnv(env)
+	cfg := c.Env[env]
+	cfg.Endpoint = strings.TrimSpace(endpoint)
+	c.Env[env] = cfg
 }

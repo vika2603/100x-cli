@@ -15,7 +15,7 @@ Expect an acknowledgement within seven days.
   (`zalando/go-keyring`) or, when no keychain is available, in
   `$XDG_CONFIG_HOME/100x/credentials/<profile>` with mode 0600.
 - Profile config (`$XDG_CONFIG_HOME/100x/config.toml`) holds only
-  non-secret fields: client ID, env label, and global endpoint mappings.
+  non-secret fields: client ID, env label, and environment settings.
 - Requests are signed with HMAC-SHA256 over a fixed template
   (`client_id={cid}&nonce={nonce}&ts={ts}`). The nonce is 16 random
   bytes per request and the ts skew tolerance is ±10 seconds.

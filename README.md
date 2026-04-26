@@ -19,7 +19,8 @@ make install     # → $GOBIN/100x
 
 Add a profile (interactive secret prompt; the secret is stored in the OS
 keychain, falling back to a chmod-600 file under `$XDG_CONFIG_HOME/100x/`).
-Profiles hold user credentials; endpoints are selected by `--env`:
+Profiles hold user credentials; environment settings live under `[env.<name>]`
+and are selected by `--env`:
 
 ```sh
 100x profile add test --env test --client-id <CID>

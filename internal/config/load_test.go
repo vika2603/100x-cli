@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -14,9 +15,9 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 
 	c := &Config{
 		Default: "live",
-		Endpoints: map[string]string{
-			"live": "https://api.example.com",
-			"test": "https://test.example.com",
+		Env: map[string]EnvConfig{
+			"live": {Endpoint: "https://api.example.com"},
+			"test": {Endpoint: "https://test.example.com"},
 		},
 		Profiles: map[string]Profile{
 			"live": {ClientID: "abc", Env: "live"},
@@ -35,6 +36,16 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("mode=%v want 0600", info.Mode().Perm())
 	}
+	data, err := os.ReadFile(filepath.Join(dir, AppName, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "[env.live]") {
+		t.Fatalf("config TOML must encode env settings under [env.<name>]:\n%s", string(data))
+	}
+	if strings.Contains(string(data), "[endpoints]") {
+		t.Fatalf("config TOML must not encode legacy [endpoints]:\n%s", string(data))
+	}
 
 	got, err := Load()
 	if err != nil {
@@ -43,8 +54,8 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if got.Default != "live" {
 		t.Errorf("Default=%q want live", got.Default)
 	}
-	if got.Endpoints["live"] != "https://api.example.com" {
-		t.Errorf("Endpoints[live]=%q want https://api.example.com", got.Endpoints["live"])
+	if got.Env["live"].Endpoint != "https://api.example.com" {
+		t.Errorf("Env[live].Endpoint=%q want https://api.example.com", got.Env["live"].Endpoint)
 	}
 	if len(got.Profiles) != 2 {
 		t.Errorf("len(Profiles)=%d want 2", len(got.Profiles))
@@ -74,8 +85,8 @@ func TestLoadMissingFile(t *testing.T) {
 	if got.Profiles == nil {
 		t.Error("Profiles must be non-nil")
 	}
-	if got.Endpoints == nil {
-		t.Error("Endpoints must be non-nil")
+	if got.Env == nil {
+		t.Error("Env must be non-nil")
 	}
 }
 
@@ -122,9 +133,9 @@ func TestResolve(t *testing.T) {
 
 func TestEndpointResolution(t *testing.T) {
 	c := &Config{
-		Endpoints: map[string]string{
-			"live": "https://live.example.com",
-			"test": "https://override.example.com",
+		Env: map[string]EnvConfig{
+			"live": {Endpoint: "https://live.example.com"},
+			"test": {Endpoint: "https://override.example.com"},
 		},
 	}
 
