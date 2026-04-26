@@ -60,6 +60,10 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return err
 	}
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: place trigger", opts.Symbol, opts.Side, "trigger", opts.TriggerPrice, "size", opts.Size)
+		return nil
+	}
 	currentPrice := opts.CurrentPrice
 	if currentPrice == "" {
 		currentPrice, err = fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)

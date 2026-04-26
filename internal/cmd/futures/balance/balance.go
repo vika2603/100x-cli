@@ -9,6 +9,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/format"
 )
 
 // NewCmdBalance returns the `balance` group.
@@ -105,5 +106,11 @@ func runHistory(ctx context.Context, opts *HistoryOptions) error {
 	if records == nil {
 		records = []futures.AssetHistoryItem{}
 	}
-	return f.IO.Render(records, nil)
+	return f.IO.Render(records, func() error {
+		rows := make([][]string, 0, len(records))
+		for _, r := range records {
+			rows = append(rows, []string{format.UnixMillis(r.Time), r.Asset, format.Enum(r.Business), r.Change})
+		}
+		return f.IO.Table([]string{"Time", "Asset", "Business", "Change"}, rows)
+	})
 }

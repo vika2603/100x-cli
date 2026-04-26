@@ -44,6 +44,10 @@ type cancelResult struct {
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: cancel orders", strings.Join(opts.OrderIDs, ","), "in", opts.Symbol)
+		return nil
+	}
 	if err := confirmCancelOrders(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
@@ -129,6 +133,10 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: cancel all open orders in", opts.Symbol)
+		return nil
+	}
 	ok, err := prompt.ConfirmDestructive(
 		fmt.Sprintf("Cancel every open order in %s?", opts.Symbol), f.Yes)
 	if err != nil {

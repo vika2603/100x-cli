@@ -9,8 +9,8 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
 	"github.com/vika2603/100x-cli/internal/exit"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/prompt"
 )
@@ -50,14 +50,18 @@ func NewCmdClose(f *factory.Factory) *cobra.Command {
 
 func runClose(ctx context.Context, opts *CloseOptions) error {
 	f := opts.Factory
-	positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
-	if err != nil {
-		return err
-	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" || opts.Size == "" {
 			return fmt.Errorf("--price and --size are required for limit position close")
+		}
+		if f.DryRun {
+			f.IO.Println("dry-run: limit position close", opts.Symbol, "position", opts.PositionID, "price", opts.Price, "size", opts.Size)
+			return nil
+		}
+		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		if err != nil {
+			return err
 		}
 		resp, err := f.Client.Position.LimitClosePosition(ctx, futures.LimitClosePositionReq{
 			Market: opts.Symbol, PositionID: positionID,
@@ -71,12 +75,20 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 				{Key: "Position ID", Value: positionID},
 				{Key: "Symbol", Value: resp.Market},
-				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
 				{Key: "Size", Value: resp.Volume},
 			})
 		})
 	case "market":
+		if f.DryRun {
+			f.IO.Println("dry-run: market position close", opts.Symbol, "position", opts.PositionID)
+			return nil
+		}
+		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		if err != nil {
+			return err
+		}
 		ok, err := prompt.ConfirmDestructive(
 			fmt.Sprintf("Close full position %s on %s at market?", positionID, opts.Symbol), f.Yes)
 		if err != nil {
@@ -100,7 +112,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 				{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 				{Key: "Position ID", Value: positionID},
 				{Key: "Symbol", Value: resp.Market},
-				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 				{Key: "Price", Value: resp.Price},
 				{Key: "Size", Value: resp.Volume},
 			})

@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -38,6 +39,10 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: cancel triggers", strings.Join(opts.OrderIDs, ","), "in", opts.Symbol)
+		return nil
+	}
 	if err := confirmCancelTriggers(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
@@ -95,6 +100,10 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: cancel all active triggers in", opts.Symbol)
+		return nil
+	}
 	ok, err := prompt.ConfirmDestructive(
 		fmt.Sprintf("Cancel every active trigger in %s?", opts.Symbol), f.Yes)
 	if err != nil {

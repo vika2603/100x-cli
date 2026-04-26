@@ -9,7 +9,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -48,9 +48,16 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return fmt.Errorf("order edit: --price and --size are required")
 	}
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: edit order", opts.OrderID, "in", opts.Symbol, "price", opts.Price, "size", opts.Size)
+		return nil
+	}
 	protection, err := readOrderProtection(ctx, f.Client, opts.Symbol, opts.OrderID)
 	if err != nil {
 		return err
+	}
+	if protection.HasAny() && protection.ConflictsWithOtherOrder {
+		return fmt.Errorf("order edit would need to reattach SL/TP for %s, but another order on the same position has active triggers; edit/cancel those triggers first", opts.OrderID)
 	}
 	resp, err := f.Client.Order.EditLimitOrder(ctx, futures.LimitOrderEditReq{
 		Market:   opts.Symbol,
@@ -73,6 +80,9 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		}); err != nil {
 			return fmt.Errorf("order edited to %d but failed to reattach SL/TP: %w", resp.OrderID, err)
 		}
+		if err := verifyEditedOrderProtection(ctx, f.Client, opts.Symbol, newOrderID, protection); err != nil {
+			return fmt.Errorf("order edited to %d but failed to verify reattached SL/TP: %w", resp.OrderID, err)
+		}
 		if refreshed, err := f.Client.Order.OrderDetail(ctx, futures.OrderDetailReq{
 			Market: opts.Symbol, OrderID: newOrderID,
 		}); err == nil {
@@ -86,8 +96,8 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return f.IO.Object([]output.KV{
 			{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 			{Key: "Symbol", Value: resp.Market},
-			{Key: "Side", Value: style.Side(f.IO, resp.Side)},
-			{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+			{Key: "Side", Value: format.Side(f.IO, resp.Side)},
+			{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			{Key: "Price", Value: resp.Price},
 			{Key: "Size", Value: resp.Volume},
 			{Key: "Filled", Value: resp.Filled},
@@ -98,10 +108,11 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 }
 
 type orderProtection struct {
-	StopLossPrice       string
-	StopLossPriceType   futures.StopTriggerType
-	TakeProfitPrice     string
-	TakeProfitPriceType futures.StopTriggerType
+	StopLossPrice           string
+	StopLossPriceType       futures.StopTriggerType
+	TakeProfitPrice         string
+	TakeProfitPriceType     futures.StopTriggerType
+	ConflictsWithOtherOrder bool
 }
 
 func (p orderProtection) HasAny() bool {
@@ -124,9 +135,12 @@ func readOrderProtection(ctx context.Context, c *futures.Client, market, orderID
 	}
 	stops, err := c.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{Market: market, Page: 1, PageSize: 100})
 	if err != nil {
-		return p, nil
+		return p, err
 	}
 	for _, s := range stops.Records {
+		if s.PositionID == order.PositionID && strconv.FormatInt(s.OrderID, 10) != orderID {
+			p.ConflictsWithOtherOrder = true
+		}
 		if strconv.FormatInt(s.OrderID, 10) != orderID {
 			continue
 		}
@@ -140,6 +154,20 @@ func readOrderProtection(ctx context.Context, c *futures.Client, market, orderID
 		}
 	}
 	return p, nil
+}
+
+func verifyEditedOrderProtection(ctx context.Context, c *futures.Client, market, orderID string, p orderProtection) error {
+	order, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: market, OrderID: orderID})
+	if err != nil {
+		return err
+	}
+	if priceSet(p.StopLossPrice) && order.StopLossPrice != p.StopLossPrice {
+		return fmt.Errorf("SL is %q, want %q", order.StopLossPrice, p.StopLossPrice)
+	}
+	if priceSet(p.TakeProfitPrice) && order.TakeProfitPrice != p.TakeProfitPrice {
+		return fmt.Errorf("TP is %q, want %q", order.TakeProfitPrice, p.TakeProfitPrice)
+	}
+	return nil
 }
 
 func priceSet(value string) bool {

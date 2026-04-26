@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -106,7 +109,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			_ = enc.Encode(payload)
 			return
 		}
-		fmt.Fprintln(os.Stderr, "error:", err)
+		fmt.Fprintln(os.Stderr, "error:", humanErrorMessage(err, codeString))
 	}
 	return cmd, emit
 }
@@ -116,6 +119,53 @@ type errorPayload struct {
 	Message    string `json:"message"`
 	HTTPStatus int    `json:"http_status,omitempty"`
 	APICode    int    `json:"api_code,omitempty"`
+}
+
+func humanErrorMessage(err error, codeString string) string {
+	var apiErr *futures.APIError
+	if errors.As(err, &apiErr) {
+		return err.Error()
+	}
+	if codeString != "network" && codeString != "server" {
+		return err.Error()
+	}
+	return summarizeNetworkError(err)
+}
+
+func summarizeNetworkError(err error) string {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return summarizeNetworkCause(urlErr.Err)
+	}
+	return summarizeNetworkCause(err)
+}
+
+func summarizeNetworkCause(err error) string {
+	if err == nil {
+		return "network error while contacting 100x API"
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "tls handshake timeout"):
+		return "TLS handshake timed out while connecting to 100x API; retry or increase --timeout"
+	case errors.Is(err, os.ErrDeadlineExceeded), errors.Is(err, net.ErrClosed):
+		return "network timeout while contacting 100x API; retry or increase --timeout"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "network timeout while contacting 100x API; retry or increase --timeout"
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return "DNS lookup failed for 100x API endpoint"
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		if opErr.Op == "dial" {
+			return "connection failed while contacting 100x API"
+		}
+	}
+	return "network error while contacting 100x API"
 }
 
 // isCredentialFreeCmd reports whether c is in a subtree that does not need

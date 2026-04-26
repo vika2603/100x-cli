@@ -2,55 +2,54 @@ package output
 
 import "github.com/charmbracelet/lipgloss"
 
-// Semantic colour primitives. Call sites decide which one fits each
-// value (e.g. trade-side BUY → Success, SELL → Danger). The Renderer
-// methods below return the ANSI-wrapped form in tty + colour mode and
-// the input unchanged otherwise, so the same call site code path
-// produces clean text in piped / JSON / --no-color contexts.
+// Terminal tone primitives. Call sites decide which tone fits each value
+// (for example BUY -> Positive, SELL -> Negative). The Renderer methods
+// return ANSI-wrapped text in tty + colour mode and unchanged text otherwise,
+// so piped output and --color never stay clean.
 var (
-	styleSuccess = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	styleWarning = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	styleDanger  = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	styleMuted   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleInfo    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	tonePositive = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	tonePending  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	toneNegative = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	toneSubtle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	toneAccent   = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 )
 
-// Success renders s in green when colour is on, otherwise unchanged.
-func (r *Renderer) Success(s string) string {
+// Positive renders s in green when colour is on, otherwise unchanged.
+func (r *Renderer) Positive(s string) string {
 	if !r.ColorOnStdout() {
 		return s
 	}
-	return styleSuccess.Render(s)
+	return tonePositive.Render(s)
 }
 
-// Warning renders s in yellow when colour is on, otherwise unchanged.
-func (r *Renderer) Warning(s string) string {
+// Pending renders s in yellow when colour is on, otherwise unchanged.
+func (r *Renderer) Pending(s string) string {
 	if !r.ColorOnStdout() {
 		return s
 	}
-	return styleWarning.Render(s)
+	return tonePending.Render(s)
 }
 
-// Danger renders s in red when colour is on, otherwise unchanged.
-func (r *Renderer) Danger(s string) string {
+// Negative renders s in red when colour is on, otherwise unchanged.
+func (r *Renderer) Negative(s string) string {
 	if !r.ColorOnStdout() {
 		return s
 	}
-	return styleDanger.Render(s)
+	return toneNegative.Render(s)
 }
 
-// Muted renders s in dim gray when colour is on, otherwise unchanged.
-func (r *Renderer) Muted(s string) string {
+// Subtle renders s in dim gray when colour is on, otherwise unchanged.
+func (r *Renderer) Subtle(s string) string {
 	if !r.ColorOnStdout() {
 		return s
 	}
-	return styleMuted.Render(s)
+	return toneSubtle.Render(s)
 }
 
-// Info renders s in cyan when colour is on, otherwise unchanged.
-func (r *Renderer) Info(s string) string {
+// Accent renders s in cyan when colour is on, otherwise unchanged.
+func (r *Renderer) Accent(s string) string {
 	if !r.ColorOnStdout() {
 		return s
 	}
-	return styleInfo.Render(s)
+	return toneAccent.Render(s)
 }

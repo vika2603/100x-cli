@@ -10,6 +10,7 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -69,13 +70,34 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 		return err
 	}
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: attach", opts.Leg, "trigger to order", opts.OrderID, "in", opts.Symbol, "at", opts.TriggerPrice)
+		return nil
+	}
+	order, stops, err := readOrderAttachState(ctx, f.Client, opts.Symbol, opts.OrderID)
+	if err != nil {
+		return err
+	}
+	if err := rejectCrossOrderTriggerConflict(order, stops); err != nil {
+		return err
+	}
 	if !opts.ClearOther {
-		existing, err := findOrderTrigger(ctx, f.Client, opts.Symbol, opts.OrderID, leg)
-		if err != nil {
-			return err
-		}
+		existing := findOrderTriggerIn(stops, order.OrderID, leg)
 		if existing != nil {
-			return updateAttachedTrigger(ctx, f, opts.Symbol, existing.ContractOrderID, opts.TriggerPrice, priceType)
+			if err := updateAttachedTrigger(ctx, f, opts.Symbol, existing.ContractOrderID, opts.TriggerPrice, priceType); err != nil {
+				return err
+			}
+			return verifyOrderLeg(ctx, f.Client, opts.Symbol, opts.OrderID, leg, opts.TriggerPrice)
+		}
+	}
+	if !opts.ClearOther && leg == shared.LegTP {
+		if sl := findOrderTriggerIn(stops, order.OrderID, shared.LegSL); sl != nil {
+			if err := attachTPPreservingOrderSL(ctx, f.Client, opts.Symbol, opts.OrderID, sl, opts.TriggerPrice, priceType); err != nil {
+				return err
+			}
+			return f.IO.Render(futures.StopOrderCloseResp{}, func() error {
+				return f.IO.Resultln("Attached", opts.Leg, "trigger to order", opts.OrderID)
+			})
 		}
 	}
 	body, err := shared.BuildAttachOrderReq(ctx, f.Client, shared.AttachOrderInput{
@@ -88,6 +110,9 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 	}
 	resp, err := f.Client.Order.StopOrderClose(ctx, body)
 	if err != nil {
+		return err
+	}
+	if err := verifyOrderLeg(ctx, f.Client, opts.Symbol, opts.OrderID, leg, opts.TriggerPrice); err != nil {
 		return err
 	}
 	return f.IO.Render(resp, func() error {
@@ -141,6 +166,10 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 		return err
 	}
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: attach", opts.Leg, "trigger to position", opts.PositionID, "in", opts.Symbol, "at", opts.TriggerPrice)
+		return nil
+	}
 	if !opts.ClearOther {
 		existing, err := findPositionTrigger(ctx, f.Client, opts.Symbol, opts.PositionID, leg)
 		if err != nil {
@@ -172,13 +201,90 @@ func findOrderTrigger(ctx context.Context, c *futures.Client, symbol, orderID st
 	if err != nil {
 		return nil, fmt.Errorf("invalid order id %q", orderID)
 	}
+	resp, err := c.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{Market: symbol, Page: 1, PageSize: 100})
+	if err != nil {
+		return nil, err
+	}
+	return findOrderTriggerIn(resp.Records, id, leg), nil
+}
+
+func readOrderAttachState(ctx context.Context, c *futures.Client, symbol, orderID string) (*futures.OrderItem, []futures.StopOrderItem, error) {
+	order, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: symbol, OrderID: orderID})
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := c.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{Market: symbol, Page: 1, PageSize: 100})
+	if err != nil {
+		return nil, nil, err
+	}
+	return order, resp.Records, nil
+}
+
+func findOrderTriggerIn(stops []futures.StopOrderItem, orderID int64, leg shared.Leg) *futures.StopOrderItem {
 	want := futures.StopOrderTypeOrderTakeProfit
 	if leg == shared.LegSL {
 		want = futures.StopOrderTypeOrderStopLoss
 	}
-	return findAttachedTrigger(ctx, c, symbol, want, func(s futures.StopOrderItem) bool {
-		return s.OrderID == id
-	})
+	for i := range stops {
+		if stops[i].ContractOrderType == want && stops[i].OrderID == orderID {
+			return &stops[i]
+		}
+	}
+	return nil
+}
+
+func rejectCrossOrderTriggerConflict(order *futures.OrderItem, stops []futures.StopOrderItem) error {
+	for _, s := range stops {
+		if s.PositionID == order.PositionID && s.OrderID != order.OrderID {
+			return fmt.Errorf(
+				"cannot attach trigger to order %d: existing trigger %s belongs to order %d on the same position; gateway applies order SL/TP by position, so edit/cancel that trigger first",
+				order.OrderID, s.ContractOrderID, s.OrderID,
+			)
+		}
+	}
+	return nil
+}
+
+func attachTPPreservingOrderSL(ctx context.Context, c *futures.Client, symbol, orderID string, sl *futures.StopOrderItem, tpPrice string, tpType futures.StopTriggerType) error {
+	if _, err := c.Order.StopOrderClose(ctx, futures.StopOrderCloseReq{
+		Market:              symbol,
+		OrderID:             orderID,
+		TakeProfitPrice:     tpPrice,
+		TakeProfitPriceType: tpType,
+	}); err != nil {
+		return err
+	}
+	if _, err := c.Order.StopOrderClose(ctx, futures.StopOrderCloseReq{
+		Market:              symbol,
+		OrderID:             orderID,
+		StopLossPrice:       sl.TriggerPrice,
+		StopLossPriceType:   sl.TriggerType,
+		TakeProfitPrice:     tpPrice,
+		TakeProfitPriceType: tpType,
+	}); err != nil {
+		return err
+	}
+	if err := verifyOrderLeg(ctx, c, symbol, orderID, shared.LegSL, sl.TriggerPrice); err != nil {
+		return err
+	}
+	return verifyOrderLeg(ctx, c, symbol, orderID, shared.LegTP, tpPrice)
+}
+
+func verifyOrderLeg(ctx context.Context, c *futures.Client, symbol, orderID string, leg shared.Leg, want string) error {
+	order, err := c.Order.OrderDetail(ctx, futures.OrderDetailReq{Market: symbol, OrderID: orderID})
+	if err != nil {
+		return err
+	}
+	got := order.TakeProfitPrice
+	name := "TP"
+	if leg == shared.LegSL {
+		got = order.StopLossPrice
+		name = "SL"
+	}
+	if got != want {
+		return fmt.Errorf("gateway accepted attach but %s on order %s is %q, want %q", name, orderID, got, want)
+	}
+	return nil
 }
 
 func findPositionTrigger(ctx context.Context, c *futures.Client, symbol, positionID string, leg shared.Leg) (*futures.StopOrderItem, error) {
@@ -221,7 +327,7 @@ func updateAttachedTrigger(ctx context.Context, f *factory.Factory, symbol, trig
 			{Key: "Trigger ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 			{Key: "Symbol", Value: symbol},
 			{Key: "Trigger Price", Value: price},
-			{Key: "Trigger By", Value: priceType.String()},
+			{Key: "Trigger By", Value: format.Enum(priceType.String())},
 		})
 	})
 }

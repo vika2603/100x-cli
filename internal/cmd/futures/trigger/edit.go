@@ -9,6 +9,7 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -52,6 +53,10 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return err
 	}
 	f := opts.Factory
+	if f.DryRun {
+		f.IO.Println("dry-run: edit trigger", opts.OrderID, "in", opts.Symbol, "trigger", opts.TriggerPrice)
+		return nil
+	}
 	resp, err := f.Client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
 		Market:        opts.Symbol,
 		StopOrderID:   opts.OrderID,
@@ -66,7 +71,7 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 			{Key: "Trigger ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 			{Key: "Symbol", Value: opts.Symbol},
 			{Key: "Trigger Price", Value: opts.TriggerPrice},
-			{Key: "Trigger By", Value: opts.TriggerBy},
+			{Key: "Trigger By", Value: format.Enum(opts.TriggerBy)},
 		})
 	})
 }

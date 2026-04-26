@@ -8,16 +8,17 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
+	"github.com/vika2603/100x-cli/internal/timeexpr"
 )
 
 // DealsOptions captures the flag-bound state of `order deals`.
 type DealsOptions struct {
-	Symbol    string
-	StartTime int
-	EndTime   int
-	Page      int
-	PageSize  int
+	Symbol   string
+	Since    string
+	Until    string
+	Page     int
+	PageSize int
 
 	Factory *factory.Factory
 }
@@ -33,8 +34,8 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "filter by symbol")
-	c.Flags().IntVar(&opts.StartTime, "since", 0, "start time (seconds)")
-	c.Flags().IntVar(&opts.EndTime, "until", 0, "end time (seconds)")
+	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
+	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "page size")
 	return c
@@ -42,8 +43,12 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 
 func runDeals(ctx context.Context, opts *DealsOptions) error {
 	f := opts.Factory
+	startTime, endTime, err := timeexpr.ResolveRange(opts.Since, opts.Until)
+	if err != nil {
+		return err
+	}
 	resp, err := f.Client.Order.OrderDeals(ctx, futures.OrderDealsReq{
-		Market: opts.Symbol, StartTime: opts.StartTime, EndTime: opts.EndTime,
+		Market: opts.Symbol, StartTime: startTime, EndTime: endTime,
 		Page: opts.Page, PageSize: opts.PageSize,
 	})
 	if err != nil {
@@ -57,10 +62,10 @@ func runDeals(ctx context.Context, opts *DealsOptions) error {
 		rows := make([][]string, 0, len(records))
 		for _, d := range records {
 			rows = append(rows, []string{
-				strconv.Itoa(d.TradeID), d.Market, style.Side(f.IO, d.Side),
-				d.Volume, d.Price, d.DealFee, d.DealProfit,
+				strconv.Itoa(d.TradeID), d.Market, format.Side(f.IO, d.Side),
+				d.Volume, d.Price, d.DealFee, d.DealProfit, format.UnixSecondsFloat(float64(d.Time)),
 			})
 		}
-		return f.IO.Table([]string{"Trade ID", "Symbol", "Side", "Size", "Price", "Fee", "PnL"}, rows)
+		return f.IO.Table([]string{"Trade ID", "Symbol", "Side", "Size", "Price", "Fee", "PnL", "Time"}, rows)
 	})
 }

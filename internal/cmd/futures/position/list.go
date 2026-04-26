@@ -8,7 +8,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -74,7 +74,7 @@ func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error 
 	out := make([][]string, 0, len(rows))
 	for _, p := range rows {
 		out = append(out, []string{
-			strconv.Itoa(p.PositionID), p.Market, style.Side(io, p.Side),
+			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
 			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal, p.Roe,
 		})
 	}
@@ -85,7 +85,7 @@ func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) err
 	out := make([][]string, 0, len(rows))
 	for _, p := range rows {
 		out = append(out, []string{
-			strconv.Itoa(p.PositionID), p.Market, style.Side(io, p.Side),
+			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
 			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal, p.Roe,
 		})
 	}

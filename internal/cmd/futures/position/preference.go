@@ -8,7 +8,7 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/position/shared"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -50,7 +50,7 @@ func runPreference(ctx context.Context, opts *PreferenceOptions) error {
 			return f.IO.Object([]output.KV{
 				{Key: "Symbol", Value: opts.Symbol},
 				{Key: "Leverage", Value: resp.Leverage},
-				{Key: "Mode", Value: style.PositionType(f.IO, resp.PositionType)},
+				{Key: "Mode", Value: format.PositionType(f.IO, resp.PositionType)},
 			})
 		})
 	}
@@ -71,7 +71,7 @@ func runPreference(ctx context.Context, opts *PreferenceOptions) error {
 		return f.IO.Object([]output.KV{
 			{Key: "Symbol", Value: opts.Symbol},
 			{Key: "Leverage", Value: updated.Leverage},
-			{Key: "Mode", Value: style.PositionType(f.IO, updated.PositionType)},
+			{Key: "Mode", Value: format.PositionType(f.IO, updated.PositionType)},
 		})
 	})
 }

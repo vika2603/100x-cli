@@ -10,7 +10,7 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/order/shared"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -110,7 +110,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 				{Key: "Symbol", Value: opts.Symbol},
-				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			})
 		})
 	case "market":
@@ -134,7 +134,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 				{Key: "Symbol", Value: opts.Symbol},
-				{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			})
 		})
 	}

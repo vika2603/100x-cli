@@ -8,7 +8,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -48,14 +48,16 @@ func runShow(ctx context.Context, opts *ShowOptions) error {
 		return f.IO.Object([]output.KV{
 			{Key: "Order ID", Value: strconv.FormatInt(resp.OrderID, 10)},
 			{Key: "Symbol", Value: resp.Market},
-			{Key: "Side", Value: style.Side(f.IO, resp.Side)},
-			{Key: "Status", Value: style.OrderStatus(f.IO, resp.Status)},
+			{Key: "Side", Value: format.Side(f.IO, resp.Side)},
+			{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			{Key: "Price", Value: resp.Price},
 			{Key: "Size", Value: resp.Volume},
 			{Key: "Filled", Value: resp.Filled},
 			{Key: "SL", Value: emptyDash(resp.StopLossPrice)},
 			{Key: "TP", Value: emptyDash(resp.TakeProfitPrice)},
 			{Key: "Client ID", Value: resp.ClientOID},
+			{Key: "Created", Value: format.UnixSecondsFloat(resp.CreateTime)},
+			{Key: "Updated", Value: format.UnixSecondsFloat(resp.UpdateTime)},
 		})
 	})
 }

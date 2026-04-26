@@ -7,7 +7,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/style"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -74,9 +74,9 @@ func printStops(io *output.Renderer, rows []futures.StopOrderItem) error {
 		out = append(out, []string{
 			s.ContractOrderID,
 			s.Market,
-			style.StopOrderType(io, s.ContractOrderType),
-			style.Side(io, s.Side),
-			style.StopOrderStatus(io, s.Status),
+			format.StopOrderType(io, s.ContractOrderType),
+			format.Side(io, s.Side),
+			format.StopOrderStatus(io, s.Status),
 			s.TriggerPrice,
 			s.OrderPrice,
 			s.Size,
