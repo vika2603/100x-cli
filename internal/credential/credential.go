@@ -50,6 +50,9 @@ func SaveSecret(clientID string, env Envelope) error {
 	if clientID == "" {
 		return errors.New("save credential: empty client_id")
 	}
+	if env.ClientKey == "" {
+		return errors.New("save credential: empty client_key")
+	}
 	if env.ClientID == "" {
 		env.ClientID = clientID
 	}
@@ -64,7 +67,9 @@ func SaveSecret(clientID string, env Envelope) error {
 }
 
 // LoadSecret reads and decodes the Envelope stored under clientID. Returns
-// ErrNotFound when no backend has the entry.
+// ErrNotFound when no backend has the entry. Rejects envelopes whose
+// client_key is empty so a malformed entry surfaces locally instead of
+// reaching the API as an unsigned request.
 func LoadSecret(clientID string) (Envelope, error) {
 	if clientID == "" {
 		return Envelope{}, ErrNotFound
@@ -76,6 +81,9 @@ func LoadSecret(clientID string) (Envelope, error) {
 	var env Envelope
 	if err := json.Unmarshal(blob, &env); err != nil {
 		return Envelope{}, fmt.Errorf("decode credential envelope: %w", err)
+	}
+	if env.ClientKey == "" {
+		return Envelope{}, fmt.Errorf("credential envelope for %q is missing client_key; re-run `100x profile add`", clientID)
 	}
 	return env, nil
 }
