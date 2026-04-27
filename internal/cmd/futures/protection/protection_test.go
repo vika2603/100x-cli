@@ -216,7 +216,10 @@ func TestOrderApplyEditsExistingStandaloneTrigger(t *testing.T) {
 
 // TestOrderApplyTPPreservingSLDoesTwoCalls locks in the documented gateway
 // quirk: when adding TP to an order that already has a standalone SL trigger,
-// the gateway needs a TP-only call followed by an SL+TP restate.
+// the gateway needs two close-stop calls. Both calls must send SL alongside
+// TP: a TP-only first call would let the gateway interpret the missing SL
+// field as "clear SL" and drop the existing standalone SL trigger before
+// evaluating the TP price.
 func TestOrderApplyTPPreservingSLDoesTwoCalls(t *testing.T) {
 	c, doer := newClient(t)
 	current := State{
@@ -242,11 +245,45 @@ func TestOrderApplyTPPreservingSLDoesTwoCalls(t *testing.T) {
 	if err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want); err != nil {
 		t.Fatal(err)
 	}
-	if first.TakeProfitPrice != "80000" || first.StopLossPrice != "" {
-		t.Errorf("first call=%+v want TP-only", first)
+	if first.TakeProfitPrice != "80000" || first.StopLossPrice != "65000" {
+		t.Errorf("first call=%+v want both legs (SL=65000 TP=80000)", first)
 	}
 	if second.TakeProfitPrice != "80000" || second.StopLossPrice != "65000" {
 		t.Errorf("second call=%+v want both legs restated", second)
+	}
+}
+
+// TestOrderApplyTPRejectionPreservesSL is the regression for the bug where a
+// failed TP attach would silently wipe an existing standalone SL trigger. The
+// first StopOrderClose call must carry the existing SL price so the gateway
+// has no excuse to clear SL when it rejects the TP value.
+func TestOrderApplyTPRejectionPreservesSL(t *testing.T) {
+	c, doer := newClient(t)
+	current := State{
+		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "abc"},
+	}
+	want := current
+	want.TP = Stop{Price: "1200", PriceType: futures.StopTriggerTypeLast}
+
+	apiErr := &futures.APIError{
+		Code: 10048, Message: "the take-profit price should be higher than the latest price", Status: 200,
+	}
+	var first futures.StopOrderCloseReq
+	doer.EXPECT().Post(gomock.Any(), pathStopClose, gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
+			first = in.(futures.StopOrderCloseReq)
+			return apiErr
+		})
+
+	err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want)
+	if !errors.Is(err, apiErr) {
+		t.Fatalf("err=%v want %v", err, apiErr)
+	}
+	if first.StopLossPrice != "65000" {
+		t.Errorf("first call StopLossPrice=%q want 65000 (SL must be carried so gateway cannot clear it)", first.StopLossPrice)
+	}
+	if first.TakeProfitPrice != "1200" {
+		t.Errorf("first call TakeProfitPrice=%q want 1200", first.TakeProfitPrice)
 	}
 }
 

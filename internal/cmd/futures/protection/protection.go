@@ -166,20 +166,20 @@ func (o Order) Apply(ctx context.Context, c *futures.Client, current, want State
 	}
 
 	// Adding TP while keeping an existing standalone SL is the documented
-	// two-call quirk: the first call sets TP alone, the second restates SL
-	// alongside the new TP.
+	// two-call quirk. Both calls send the full SL+TP body: a TP-only first
+	// call would make the gateway interpret the absent SL field as "clear
+	// SL" and drop the standalone SL trigger before it even evaluated the
+	// (possibly bad) TP price, losing the user's existing protection.
 	if tpChanged && !slChanged && want.TP.Set() && current.TP.TriggerID == "" && current.SL.TriggerID != "" {
-		if _, err := c.Order.StopOrderClose(ctx, futures.StopOrderCloseReq{
-			Market: o.Symbol, OrderID: o.OrderID,
-			TakeProfitPrice: want.TP.Price, TakeProfitPriceType: want.TP.PriceType,
-		}); err != nil {
-			return err
-		}
-		_, err := c.Order.StopOrderClose(ctx, futures.StopOrderCloseReq{
+		body := futures.StopOrderCloseReq{
 			Market: o.Symbol, OrderID: o.OrderID,
 			StopLossPrice: current.SL.Price, StopLossPriceType: current.SL.PriceType,
 			TakeProfitPrice: want.TP.Price, TakeProfitPriceType: want.TP.PriceType,
-		})
+		}
+		if _, err := c.Order.StopOrderClose(ctx, body); err != nil {
+			return err
+		}
+		_, err := c.Order.StopOrderClose(ctx, body)
 		return err
 	}
 
