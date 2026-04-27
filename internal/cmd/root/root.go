@@ -84,12 +84,12 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		&cobra.Group{ID: "tools", Title: "Tooling Commands"},
 	)
 
-	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "use credentials from profile <name>")
-	cmd.PersistentFlags().BoolVar(&gf.jsonOut, "json", false, "write JSON to stdout")
-	cmd.PersistentFlags().StringVar(&gf.jq, "jq", "", "run a gojq expression against JSON output")
-	cmd.PersistentFlags().BoolVarP(&gf.quiet, "quiet", "q", false, "hide human-readable stdout")
-	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "answer yes to confirmation prompts")
-	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "color mode: auto | always | never (NO_COLOR honored)")
+	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "Use credentials from profile <name>")
+	cmd.PersistentFlags().BoolVar(&gf.jsonOut, "json", false, "Write JSON to stdout")
+	cmd.PersistentFlags().StringVar(&gf.jq, "jq", "", "Run a gojq expression against JSON output")
+	cmd.PersistentFlags().BoolVarP(&gf.quiet, "quiet", "q", false, "Hide human-readable stdout")
+	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "Answer yes to confirmation prompts")
+	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "Color mode: auto | always | never (NO_COLOR honored)")
 	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 15*time.Second, "HTTP timeout per request")
 	_ = cmd.RegisterFlagCompletionFunc("profile", profile.CompleteNameFlag)
 	_ = cmd.RegisterFlagCompletionFunc("color", cobra.FixedCompletions([]string{"auto", "always", "never"}, cobra.ShellCompDirectiveNoFileComp))

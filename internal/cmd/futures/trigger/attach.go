@@ -60,10 +60,10 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 			return runAttachOrder(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Kind, "type", "", "which side to set: SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the unchanged SL/TP side instead of preserving it")
+	c.Flags().StringVar(&opts.Kind, "type", "", "Which side to set: SL | TP")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "New trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unchanged SL/TP side instead of preserving it")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)
@@ -142,10 +142,10 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 			return runAttachPosition(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Kind, "type", "", "which side to set: SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the unchanged SL/TP side instead of preserving it")
+	c.Flags().StringVar(&opts.Kind, "type", "", "Which side to set: SL | TP")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "New trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unchanged SL/TP side instead of preserving it")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)

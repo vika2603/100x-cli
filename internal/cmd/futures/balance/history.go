@@ -43,10 +43,10 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 			return runHistory(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset (for example USDT)")
-	c.Flags().StringVar(&opts.Type, "type", "", "business type, for example deposit | withdraw | faucet | fee | trade")
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "Only show this asset (for example USDT)")
+	c.Flags().StringVar(&opts.Type, "type", "", "Business type, for example deposit | withdraw | faucet | fee | trade")
+	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "Items per page")
 	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
 	_ = c.RegisterFlagCompletionFunc("type", complete.BalanceEventTypes)
 	return c

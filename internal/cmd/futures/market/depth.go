@@ -48,8 +48,8 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(resp, func() error { return printDepth(f.IO, resp) })
 		},
 	}
-	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "merge book levels by this tick size")
-	c.Flags().IntVar(&opts.Limit, "limit", 10, "levels to show on each side (server caps at 50)")
+	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "Merge book levels by this tick size")
+	c.Flags().IntVar(&opts.Limit, "limit", 10, "Levels to show on each side (server caps at 50)")
 	return c
 }
 

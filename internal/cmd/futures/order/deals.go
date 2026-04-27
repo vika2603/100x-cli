@@ -44,11 +44,11 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 			return runDeals(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show fills for this symbol")
-	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
-	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show fills for this symbol")
+	c.Flags().StringVar(&opts.Since, "since", "", "Start time: "+timeexpr.Help)
+	c.Flags().StringVar(&opts.Until, "until", "", "End time: "+timeexpr.Help)
+	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "Items per page")
 	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
 	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)

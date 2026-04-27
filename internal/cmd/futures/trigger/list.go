@@ -73,9 +73,9 @@ func NewCmdTriggers(f *factory.Factory) *cobra.Command {
 }
 
 func addListFlags(c *cobra.Command, opts *ListOptions) {
-	c.Flags().BoolVar(&opts.Finished, "finished", false, "show finished triggers instead of active triggers")
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	c.Flags().BoolVar(&opts.Finished, "finished", false, "Show finished triggers instead of active triggers")
+	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "Items per page")
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {

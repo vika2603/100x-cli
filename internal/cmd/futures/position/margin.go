@@ -44,9 +44,9 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 			return runMargin(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID for read mode; required when the symbol matches multiple positions")
-	c.Flags().StringVar(&opts.Add, "add", "", "amount of isolated margin to add")
-	c.Flags().StringVar(&opts.Reduce, "reduce", "", "amount of isolated margin to remove")
+	c.Flags().StringVar(&opts.PositionID, "position-id", "", "Position ID for read mode; required when the symbol matches multiple positions")
+	c.Flags().StringVar(&opts.Add, "add", "", "Amount of isolated margin to add")
+	c.Flags().StringVar(&opts.Reduce, "reduce", "", "Amount of isolated margin to remove")
 	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }

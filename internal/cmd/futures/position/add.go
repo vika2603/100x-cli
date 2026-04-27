@@ -42,10 +42,10 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 			return runAdd(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID; otherwise resolve from symbol")
-	c.Flags().StringVar(&opts.Type, "type", "limit", "execution type: limit | market")
-	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
-	c.Flags().StringVar(&opts.Size, "size", "", "quantity to add")
+	c.Flags().StringVar(&opts.PositionID, "position-id", "", "Position ID; otherwise resolve from symbol")
+	c.Flags().StringVar(&opts.Type, "type", "limit", "Execution type: limit | market")
+	c.Flags().StringVar(&opts.Price, "price", "", "Limit price; required for limit orders")
+	c.Flags().StringVar(&opts.Size, "size", "", "Quantity to add")
 	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
 	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)

@@ -29,7 +29,7 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			return runMarketList(cmd.Context(), f, includeUnavailable)
 		},
 	}
-	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "include markets that are not currently tradable")
+	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "Include markets that are not currently tradable")
 	return c
 }
 

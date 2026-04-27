@@ -42,9 +42,9 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client ID for this profile")
-	c.Flags().StringVar(&opts.Secret, "secret", "", "client secret; prompt when omitted")
-	c.Flags().BoolVar(&opts.SetDefault, "default", false, "make this the default profile")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "Client ID for this profile")
+	c.Flags().StringVar(&opts.Secret, "secret", "", "Client secret; prompt when omitted")
+	c.Flags().BoolVar(&opts.SetDefault, "default", false, "Make this the default profile")
 	return c
 }
 

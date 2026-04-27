@@ -44,8 +44,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 			return runEdit(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Price, "price", "", "new limit price")
-	c.Flags().StringVar(&opts.Size, "size", "", "new order quantity")
+	c.Flags().StringVar(&opts.Price, "price", "", "New limit price")
+	c.Flags().StringVar(&opts.Size, "size", "", "New order quantity")
 	_ = c.MarkFlagRequired("price")
 	_ = c.MarkFlagRequired("size")
 	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)

@@ -48,7 +48,7 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(resp, func() error { return printMarketDeals(f.IO, resp) })
 		},
 	}
-	c.Flags().IntVar(&limit, "limit", 20, "recent trades to show (server caps at 50)")
+	c.Flags().IntVar(&limit, "limit", 20, "Recent trades to show (server caps at 50)")
 	return c
 }
 

@@ -44,12 +44,12 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 			return runPlace(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Side, "side", "", "triggered order side: buy | sell")
-	c.Flags().StringVar(&opts.Size, "size", "", "triggered order quantity")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "price that activates this trigger")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
-	c.Flags().StringVar(&opts.LimitPrice, "limit-price", "", "limit price after the trigger fires; omit for market execution")
-	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "override the current price snapshot for testing")
+	c.Flags().StringVar(&opts.Side, "side", "", "Triggered order side: buy | sell")
+	c.Flags().StringVar(&opts.Size, "size", "", "Triggered order quantity")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "Price that activates this trigger")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.LimitPrice, "limit-price", "", "Limit price after the trigger fires; omit for market execution")
+	c.Flags().StringVar(&opts.CurrentPrice, "current-price", "", "Override the current price snapshot for testing")
 	_ = c.Flags().MarkHidden("current-price")
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")

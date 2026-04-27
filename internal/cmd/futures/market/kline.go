@@ -46,10 +46,10 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 			return runKline(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval ("+strings.Join(complete.KlineIntervalAliases, ", ")+")")
-	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
-	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
-	c.Flags().IntVar(&opts.Limit, "limit", 20, "latest candles to show")
+	c.Flags().StringVar(&opts.Interval, "interval", "1m", "Candle interval ("+strings.Join(complete.KlineIntervalAliases, ", ")+")")
+	c.Flags().StringVar(&opts.Since, "since", "", "Start time: "+timeexpr.Help)
+	c.Flags().StringVar(&opts.Until, "until", "", "End time: "+timeexpr.Help)
+	c.Flags().IntVar(&opts.Limit, "limit", 20, "Latest candles to show")
 	_ = c.RegisterFlagCompletionFunc("interval", complete.KlineIntervals)
 	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
 	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)

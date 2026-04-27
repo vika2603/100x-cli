@@ -39,7 +39,7 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset, for example USDT")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "Only show this asset, for example USDT")
 	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
 	return c
 }
@@ -59,7 +59,7 @@ func NewCmdBalances(f *factory.Factory) *cobra.Command {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset, for example USDT")
+	c.Flags().StringVar(&opts.Currency, "currency", "", "Only show this asset, for example USDT")
 	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
 	return c
 }

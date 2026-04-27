@@ -49,8 +49,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 			return runEdit(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "New trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("trigger-price")
 	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
 	return c

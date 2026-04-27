@@ -71,12 +71,12 @@ func NewCmdOrders(f *factory.Factory) *cobra.Command {
 }
 
 func addListFlags(c *cobra.Command, opts *ListOptions) {
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show orders for this symbol")
-	c.Flags().BoolVar(&opts.Finished, "finished", false, "show finished orders instead of open orders")
-	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help+" (finished only)")
-	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help+" (finished only)")
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show orders for this symbol")
+	c.Flags().BoolVar(&opts.Finished, "finished", false, "Show finished orders instead of open orders")
+	c.Flags().StringVar(&opts.Since, "since", "", "Start time: "+timeexpr.Help+" (finished only)")
+	c.Flags().StringVar(&opts.Until, "until", "", "End time: "+timeexpr.Help+" (finished only)")
+	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "Items per page")
 	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
 	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)

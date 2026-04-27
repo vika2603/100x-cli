@@ -45,8 +45,8 @@ func NewCmdPreference(f *factory.Factory) *cobra.Command {
 			return runPreference(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Leverage, "leverage", "", "target leverage; keep current when omitted")
-	c.Flags().StringVar(&opts.Mode, "mode", "", "margin mode: ISOLATED | CROSS; keep current when omitted")
+	c.Flags().StringVar(&opts.Leverage, "leverage", "", "Target leverage; keep current when omitted")
+	c.Flags().StringVar(&opts.Mode, "mode", "", "Margin mode: ISOLATED | CROSS; keep current when omitted")
 	_ = c.RegisterFlagCompletionFunc("mode", complete.MarginModes)
 	return c
 }

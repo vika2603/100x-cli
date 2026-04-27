@@ -40,7 +40,7 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show positions for this symbol")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show positions for this symbol")
 	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	return c
 }
@@ -60,7 +60,7 @@ func NewCmdPositions(f *factory.Factory) *cobra.Command {
 			return runList(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show positions for this symbol")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show positions for this symbol")
 	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	return c
 }
@@ -107,9 +107,9 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(records, func() error { return printClosed(f.IO, records, opts.Symbol != "") })
 		},
 	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show closed positions for this symbol")
-	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
-	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show closed positions for this symbol")
+	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
+	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "Items per page")
 	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	return c
 }
