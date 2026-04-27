@@ -28,3 +28,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          E100X_ENDPOINT_DEFAULT: ${{ secrets.E100X_ENDPOINT_DEFAULT }}
