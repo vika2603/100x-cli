@@ -106,6 +106,10 @@ func applyHelp(cmd *cobra.Command) {
 	cmd.SetUsageFunc(func(c *cobra.Command) error {
 		return renderHelp(c.OutOrStdout(), c)
 	})
+	cmd.InitDefaultHelpFlag()
+	if hf := cmd.Flags().Lookup("help"); hf != nil {
+		hf.Usage = "Show help for command"
+	}
 	for _, sub := range cmd.Commands() {
 		applyHelp(sub)
 	}
@@ -202,6 +206,9 @@ func (s helpStyler) formatExamples(raw string) string {
 		case trimmed == "":
 			continue
 		case strings.HasPrefix(trimmed, "#"):
+			if len(out) > 0 {
+				out = append(out, "")
+			}
 			out = append(out, "  "+s.render(styleExampleComment, trimmed))
 		default:
 			trimmed = strings.TrimPrefix(trimmed, "$")
@@ -222,8 +229,8 @@ func (s helpStyler) render(style lipgloss.Style, value string) string {
 var (
 	styleSection        = lipgloss.NewStyle().Bold(true)
 	styleCommandName    = lipgloss.NewStyle()
-	styleExampleComment = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	stylePrompt         = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
+	styleExampleComment = lipgloss.NewStyle()
+	stylePrompt         = lipgloss.NewStyle()
 )
 
 func helpColorEnabled(cmd *cobra.Command, w io.Writer) bool {

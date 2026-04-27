@@ -54,14 +54,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 
 	cmd := &cobra.Command{
 		Use:   "100x",
-		Short: "100x futures-trading CLI",
-		Long: "Use 100x from the terminal for market data, balances, orders, triggers, and positions.\n\n" +
-			"Private commands read credentials from a named profile. A profile stores user identity\n" +
-			"only. Set $E100X_ENDPOINT to point the CLI at a different API host. Public market\n" +
-			"commands can run without private credentials.\n\n" +
-			"Human output is designed for terminal use. Add --json for machine-readable API-shaped\n" +
-			"output; --jq also enables JSON and filters it for scripts. Use --help on any subcommand to inspect\n" +
-			"required arguments, default values, examples, and command-specific notes.",
+		Short: "Command-line interface for the 100X exchange.",
 		Example: "# Add a profile named test (you will be prompted for the secret)\n" +
 			"  100x profile add test --client-id <CID>\n\n" +
 			"# Run one command against a different API host\n" +
