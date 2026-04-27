@@ -151,7 +151,13 @@ func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, empt
 			timeValue(o),
 		})
 	}
-	return io.Table([]string{"Order ID", "Symbol", "Side", "Type", "Status", "Price", "Size", "Filled", "SL", "TP", "Client ID", timeHeader}, out)
+	return io.Table([]output.Column{
+		output.LCol("Order ID"), output.LCol("Symbol"), output.LCol("Side"),
+		output.LCol("Type"), output.LCol("Status"),
+		output.RCol("Price"), output.RCol("Size"), output.RCol("Filled"),
+		output.RCol("SL"), output.RCol("TP"),
+		output.LCol("Client ID"), output.LCol(timeHeader),
+	}, out)
 }
 
 func emptyDash(value string) string {

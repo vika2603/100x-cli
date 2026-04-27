@@ -129,5 +129,9 @@ func printStops(io *output.Renderer, rows []futures.StopOrderItem, emptyMessage 
 			s.Size,
 		})
 	}
-	return io.Table([]string{"Trigger ID", "Symbol", "Type", "Side", "Status", "Trigger Price", "Order Price", "Size"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Trigger ID"), output.LCol("Symbol"),
+		output.LCol("Type"), output.LCol("Side"), output.LCol("Status"),
+		output.RCol("Trigger Price"), output.RCol("Order Price"), output.RCol("Size"),
+	}, out)
 }

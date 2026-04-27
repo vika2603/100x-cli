@@ -7,6 +7,7 @@ import (
 
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/config"
+	"github.com/vika2603/100x-cli/internal/output"
 )
 
 func newCmdList(f *factory.Factory) *cobra.Command {
@@ -49,7 +50,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 					}
 					out = append(out, []string{r.Name, r.ClientID, current})
 				}
-				return f.IO.Table([]string{"Name", "Client ID", "Current"}, out)
+				return f.IO.Table([]output.Column{
+					output.LCol("Name"), output.LCol("Client ID"), output.LCol("Current"),
+				}, out)
 			})
 		},
 	}

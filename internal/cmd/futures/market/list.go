@@ -7,6 +7,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/output"
 )
 
 func newCmdList(f *factory.Factory) *cobra.Command {
@@ -54,6 +55,9 @@ func runMarketList(ctx context.Context, f *factory.Factory, includeUnavailable b
 		for _, m := range resp {
 			rows = append(rows, []string{m.Name, m.Stock, m.Money, m.TickSize, m.MakerFee, m.TakerFee})
 		}
-		return f.IO.Table([]string{"Symbol", "Base", "Quote", "Tick Size", "Maker Fee", "Taker Fee"}, rows)
+		return f.IO.Table([]output.Column{
+			output.LCol("Symbol"), output.LCol("Base"), output.LCol("Quote"),
+			output.RCol("Tick Size"), output.RCol("Maker Fee"), output.RCol("Taker Fee"),
+		}, rows)
 	})
 }

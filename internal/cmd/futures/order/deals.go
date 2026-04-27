@@ -11,6 +11,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
+	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
 )
 
@@ -88,6 +89,10 @@ func runDeals(ctx context.Context, opts *DealsOptions) error {
 				d.Volume, d.Price, d.DealFee, d.DealProfit, format.UnixSecondsFloat(float64(d.Time)),
 			})
 		}
-		return f.IO.Table([]string{"Trade ID", "Symbol", "Side", "Size", "Price", "Fee", "PnL", "Time"}, rows)
+		return f.IO.Table([]output.Column{
+			output.LCol("Trade ID"), output.LCol("Symbol"), output.LCol("Side"),
+			output.RCol("Size"), output.RCol("Price"), output.RCol("Fee"), output.RCol("PnL"),
+			output.LCol("Time"),
+		}, rows)
 	})
 }

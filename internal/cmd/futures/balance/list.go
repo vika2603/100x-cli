@@ -9,6 +9,7 @@ import (
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/output"
 )
 
 // ListOptions captures the state of `balance list`.
@@ -90,6 +91,10 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		for _, b := range resp {
 			rows = append(rows, []string{b.Asset, b.Available, b.Frozen, b.Margin, b.BalanceTotal, b.ProfitUnreal, b.Transfer})
 		}
-		return f.IO.Table([]string{"Asset", "Available", "Frozen", "Margin", "Total", "uPnL", "Transferable"}, rows)
+		return f.IO.Table([]output.Column{
+			output.LCol("Asset"),
+			output.RCol("Available"), output.RCol("Frozen"), output.RCol("Margin"),
+			output.RCol("Total"), output.RCol("uPnL"), output.RCol("Transferable"),
+		}, rows)
 	})
 }
