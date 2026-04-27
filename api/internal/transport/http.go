@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v5"
 	"github.com/imroc/req/v3"
 )
 
@@ -31,13 +33,15 @@ type Client struct {
 	Endpoint string
 	Creds    Credentials
 	r        *req.Client
+	retry    RetryPolicy
 }
 
 // New constructs a transport client with sane defaults.
 //
 // `httpClient` is honoured for backward compatibility: when non-nil its
-// Timeout and Transport are copied onto the underlying req.Client.
-func New(endpoint string, creds Credentials, httpClient *http.Client) *Client {
+// Timeout and Transport are copied onto the underlying req.Client. Pass
+// WithRetryPolicy to override the default retry behaviour for Get.
+func New(endpoint string, creds Credentials, httpClient *http.Client, opts ...Option) *Client {
 	r := req.C().
 		SetBaseURL(strings.TrimRight(endpoint, "/")).
 		SetTimeout(defaultTimeout).
@@ -57,6 +61,10 @@ func New(endpoint string, creds Credentials, httpClient *http.Client) *Client {
 		Endpoint: strings.TrimRight(endpoint, "/"),
 		Creds:    creds,
 		r:        r,
+		retry:    DefaultRetryPolicy,
+	}
+	for _, opt := range opts {
+		opt(c)
 	}
 	if creds.ClientID != "" || creds.ClientKey != "" {
 		r.OnBeforeRequest(c.sign)
@@ -99,18 +107,49 @@ func (e *APIError) Error() string {
 }
 
 // Get sends a signed GET. `in` is converted to query parameters via req's
-// struct-tag handling (`url:"name,omitempty"`).
+// struct-tag handling (`url:"name,omitempty"`). Transient failures
+// (transport errors and retryable HTTP statuses) are retried per the
+// resolved RetryPolicy; non-zero envelope codes are not.
 func (c *Client) Get(ctx context.Context, path string, in, out any) error {
 	in = normalizeMarketFields(in)
-	r := c.r.R().SetContext(ctx)
-	if in != nil {
-		r.SetQueryParamsFromStruct(in)
+	policy := retryPolicyFromCtx(ctx, c.retry)
+	tries := uint(max(policy.MaxAttempts, 1))
+
+	bo := backoff.NewExponentialBackOff()
+	bo.InitialInterval = policy.BaseDelay
+	bo.MaxInterval = policy.MaxDelay
+	bo.RandomizationFactor = 0.5
+	bo.Multiplier = 2.0
+
+	op := func() (struct{}, error) {
+		r := c.r.R().SetContext(ctx)
+		if in != nil {
+			r.SetQueryParamsFromStruct(in)
+		}
+		resp, err := r.Get(path)
+		if err != nil {
+			return struct{}{}, err
+		}
+		if retryableStatus(resp.StatusCode) {
+			return struct{}{}, fmt.Errorf("transport: http %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		}
+		if err := decodeEnvelope(resp.Bytes(), resp.StatusCode, out); err != nil {
+			return struct{}{}, backoff.Permanent(err)
+		}
+		return struct{}{}, nil
 	}
-	resp, err := r.Get(path)
-	if err != nil {
-		return err
+
+	// MaxElapsedTime must be set explicitly; backoff/v5 otherwise defaults to 15 minutes.
+	_, err := backoff.Retry(ctx, op,
+		backoff.WithBackOff(bo),
+		backoff.WithMaxTries(tries),
+		backoff.WithMaxElapsedTime(policy.MaxElapsed),
+	)
+	var perm *backoff.PermanentError
+	if errors.As(err, &perm) {
+		return perm.Err
 	}
-	return decodeEnvelope(resp.Bytes(), resp.StatusCode, out)
+	return err
 }
 
 // Post sends a signed POST with `in` as the JSON body.

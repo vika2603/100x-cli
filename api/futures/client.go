@@ -21,12 +21,23 @@ type Doer interface {
 	Post(ctx context.Context, path string, in, out any) error
 }
 
-// Options configures a futures Client.
+// RetryPolicy controls retry on read (GET) requests. See transport.RetryPolicy.
+type RetryPolicy = transport.RetryPolicy
+
+var NoRetry = transport.NoRetry
+
+// WithRetryPolicy attaches a per-call RetryPolicy to ctx. Writes are not affected.
+func WithRetryPolicy(ctx context.Context, p RetryPolicy) context.Context {
+	return transport.WithRetryPolicyCtx(ctx, p)
+}
+
+// Options configures a futures Client. Retry nil uses transport.DefaultRetryPolicy.
 type Options struct {
 	Endpoint   string
 	ClientID   string
 	ClientKey  string
 	HTTPClient *http.Client
+	Retry      *RetryPolicy
 }
 
 // Client is the futures API entry point. Sub-clients group methods by the
@@ -41,10 +52,14 @@ type Client struct {
 
 // New constructs a Client that signs requests with the given credentials.
 func New(opts Options) *Client {
+	var trOpts []transport.Option
+	if opts.Retry != nil {
+		trOpts = append(trOpts, transport.WithRetryPolicy(*opts.Retry))
+	}
 	tr := transport.New(opts.Endpoint, transport.Credentials{
 		ClientID:  opts.ClientID,
 		ClientKey: opts.ClientKey,
-	}, opts.HTTPClient)
+	}, opts.HTTPClient, trOpts...)
 	return NewWithDoer(tr)
 }
 
