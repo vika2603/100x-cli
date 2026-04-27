@@ -29,8 +29,8 @@ func NewCmdTrigger(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger list BTCUSDT\n\n" +
 			"# Place a standalone BUY trigger on BTCUSDT at trigger price 65000\n" +
 			"  100x futures trigger place BTCUSDT --side buy --trigger-price 65000 --size 0.001\n\n" +
-			"# Attach a stop-loss at 68000 to an existing BTCUSDT order\n" +
-			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000",
+			"# Attach SL and TP together to an existing BTCUSDT order\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> --sl-price 68000 --tp-price 82000",
 	}
 	c.AddCommand(
 		NewCmdPlace(f),

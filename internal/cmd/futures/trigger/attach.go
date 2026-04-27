@@ -20,9 +20,11 @@ func NewCmdAttach(f *factory.Factory) *cobra.Command {
 		Use:   "attach",
 		Short: "Attach SL/TP to an existing order or position",
 		Example: "# Attach a stop-loss at 68000 to a BTCUSDT order\n" +
-			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000\n\n" +
-			"# Attach a take-profit at 82000 to a BTCUSDT position\n" +
-			"  100x futures trigger attach position BTCUSDT <position-id> --type TP --trigger-price 82000",
+			"  100x futures trigger attach order BTCUSDT <order-id> --sl-price 68000\n\n" +
+			"# Attach SL (mark feed) and TP (last feed) together in one call\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> \\\n" +
+			"      --sl-price 68000 --sl-trigger-by MARK \\\n" +
+			"      --tp-price 82000 --tp-trigger-by LAST",
 	}
 	c.AddCommand(NewCmdAttachOrder(f), NewCmdAttachPosition(f))
 	return c
@@ -30,12 +32,14 @@ func NewCmdAttach(f *factory.Factory) *cobra.Command {
 
 // AttachOrderOptions captures the flag-bound state of `trigger attach order`.
 type AttachOrderOptions struct {
-	Symbol       string
-	OrderID      string
-	Kind         string
-	TriggerPrice string
-	TriggerBy    string
-	ClearOther   bool
+	Symbol      string
+	OrderID     string
+	SLPrice     string
+	TPPrice     string
+	TriggerBy   string
+	SLTriggerBy string
+	TPTriggerBy string
+	ClearOther  bool
 
 	Factory *factory.Factory
 }
@@ -45,13 +49,27 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 	opts := &AttachOrderOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "order <symbol> <order-id>",
-		Short: "Attach an SL or TP to a pending order",
-		Long: "Attach an SL or TP to a pending order.\n\n" +
-			"The gateway applies order-level SL/TP at position scope. The CLI preserves the unchanged side only when the backend can do so safely.",
-		Example: "# Attach a stop-loss at 68000 to one pending BTCUSDT order\n" +
-			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000\n\n" +
+		Short: "Attach SL and/or TP to a pending order",
+		Long: "Attach SL and/or TP to a pending order.\n\n" +
+			"Pass --sl-price, --tp-price, or both. With one side given, the other is preserved\n" +
+			"automatically; pass --clear-other to drop it instead. With both given, the call sets\n" +
+			"SL and TP in a single request and --clear-other is rejected as redundant.\n\n" +
+			"--trigger-by sets the feed for both sides (default LAST). --sl-trigger-by and\n" +
+			"--tp-trigger-by override that for one side, useful when SL and TP need different\n" +
+			"feeds (e.g. SL on MARK, TP on LAST).\n\n" +
+			"The gateway applies order-level SL/TP at position scope. The CLI preserves the\n" +
+			"unchanged side only when the backend can do so safely.",
+		Example: "# Attach a stop-loss at 68000 (LAST feed by default)\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> --sl-price 68000\n\n" +
+			"# Set SL and TP together in one request, both on the LAST feed\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> \\\n" +
+			"      --sl-price 68000 --tp-price 82000\n\n" +
+			"# Set SL on MARK and TP on LAST in one request\n" +
+			"  100x futures trigger attach order BTCUSDT <order-id> \\\n" +
+			"      --sl-price 68000 --sl-trigger-by MARK \\\n" +
+			"      --tp-price 82000 --tp-trigger-by LAST\n\n" +
 			"# Replace the unchanged side while attaching take-profit at 82000\n" +
-			"  100x futures trigger attach order BTCUSDT <order-id> --type TP --trigger-price 82000 --clear-other",
+			"  100x futures trigger attach order BTCUSDT <order-id> --tp-price 82000 --clear-other",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: complete.OpenOrderArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -60,14 +78,15 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 			return runAttachOrder(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Kind, "type", "", "Which side to set: SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "New trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unchanged SL/TP side instead of preserving it")
-	_ = c.MarkFlagRequired("type")
-	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)
+	c.Flags().StringVar(&opts.SLPrice, "sl-price", "", "Stop-loss trigger price")
+	c.Flags().StringVar(&opts.TPPrice, "tp-price", "", "Take-profit trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Default trigger feed for both sides: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.SLTriggerBy, "sl-trigger-by", "", "Override SL trigger feed (defaults to --trigger-by)")
+	c.Flags().StringVar(&opts.TPTriggerBy, "tp-trigger-by", "", "Override TP trigger feed (defaults to --trigger-by)")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unspecified SL/TP side instead of preserving it")
 	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("sl-trigger-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("tp-trigger-by", complete.TriggerFeeds)
 	return c
 }
 
@@ -75,23 +94,12 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
 		return err
 	}
-	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+	if err := validateSidePrices(opts.SLPrice, opts.TPPrice, opts.ClearOther); err != nil {
 		return err
 	}
-	kind, err := protection.ParseKind(opts.Kind)
+	slType, tpType, err := parseSideTriggerBys(opts.TriggerBy, opts.SLTriggerBy, opts.TPTriggerBy)
 	if err != nil {
 		return err
-	}
-	var priceType futures.StopTriggerType
-	switch strings.ToUpper(opts.TriggerBy) {
-	case "", "LAST":
-		priceType = futures.StopTriggerTypeLast
-	case "INDEX":
-		priceType = futures.StopTriggerTypeIndex
-	case "MARK":
-		priceType = futures.StopTriggerTypeMark
-	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
 	}
 	f := opts.Factory
 	target := protection.Order{Symbol: opts.Symbol, OrderID: opts.OrderID}
@@ -102,24 +110,26 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 	if current.CrossOrderConflict {
 		return fmt.Errorf("cannot attach trigger to order %s: another pending order on the same position has active triggers; gateway applies order SL/TP by position, so edit/cancel that trigger first", opts.OrderID)
 	}
-	want := planAttach(current, kind, opts.TriggerPrice, priceType, opts.ClearOther)
+	want := planAttachSides(current, opts.SLPrice, opts.TPPrice, slType, tpType, opts.ClearOther)
 	if err := target.Apply(ctx, f.Client, current, want); err != nil {
 		return err
 	}
 	if err := target.Verify(ctx, f.Client, want); err != nil {
 		return err
 	}
-	return f.IO.Resultln("Attached", kind.String(), "to order", opts.OrderID)
+	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to order", opts.OrderID)
 }
 
 // AttachPositionOptions captures the flag-bound state of `trigger attach position`.
 type AttachPositionOptions struct {
-	Symbol       string
-	PositionID   string
-	Kind         string
-	TriggerPrice string
-	TriggerBy    string
-	ClearOther   bool
+	Symbol      string
+	PositionID  string
+	SLPrice     string
+	TPPrice     string
+	TriggerBy   string
+	SLTriggerBy string
+	TPTriggerBy string
+	ClearOther  bool
 
 	Factory *factory.Factory
 }
@@ -129,11 +139,20 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 	opts := &AttachPositionOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "position <symbol> <position-id>",
-		Short: "Attach an SL or TP to an open position",
-		Example: "# Attach a stop-loss at 68000 to one BTCUSDT position\n" +
-			"  100x futures trigger attach position BTCUSDT <position-id> --type SL --trigger-price 68000\n\n" +
-			"# Attach a take-profit at 82000 to one BTCUSDT position\n" +
-			"  100x futures trigger attach position BTCUSDT <position-id> --type TP --trigger-price 82000",
+		Short: "Attach SL and/or TP to an open position",
+		Long: "Attach SL and/or TP to an open position.\n\n" +
+			"Pass --sl-price, --tp-price, or both. With one side given, the other is preserved\n" +
+			"automatically; pass --clear-other to drop it instead. With both given, the call sets\n" +
+			"SL and TP in a single request and --clear-other is rejected as redundant.\n\n" +
+			"--trigger-by sets the feed for both sides (default LAST). --sl-trigger-by and\n" +
+			"--tp-trigger-by override that for one side, useful when SL and TP need different\n" +
+			"feeds (e.g. SL on MARK, TP on LAST).",
+		Example: "# Attach a stop-loss at 68000 (LAST feed)\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> --sl-price 68000\n\n" +
+			"# SL and TP together with different feeds\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> \\\n" +
+			"      --sl-price 68000 --sl-trigger-by MARK \\\n" +
+			"      --tp-price 82000 --tp-trigger-by LAST",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: complete.OpenPositionArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -142,14 +161,15 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 			return runAttachPosition(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Kind, "type", "", "Which side to set: SL | TP")
-	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "New trigger price")
-	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Trigger feed: LAST | INDEX | MARK")
-	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unchanged SL/TP side instead of preserving it")
-	_ = c.MarkFlagRequired("type")
-	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)
+	c.Flags().StringVar(&opts.SLPrice, "sl-price", "", "Stop-loss trigger price")
+	c.Flags().StringVar(&opts.TPPrice, "tp-price", "", "Take-profit trigger price")
+	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "Default trigger feed for both sides: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.SLTriggerBy, "sl-trigger-by", "", "Override SL trigger feed (defaults to --trigger-by)")
+	c.Flags().StringVar(&opts.TPTriggerBy, "tp-trigger-by", "", "Override TP trigger feed (defaults to --trigger-by)")
+	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "Clear the unspecified SL/TP side instead of preserving it")
 	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("sl-trigger-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("tp-trigger-by", complete.TriggerFeeds)
 	return c
 }
 
@@ -157,23 +177,12 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 	if err := clierr.PositiveID("position-id", opts.PositionID); err != nil {
 		return err
 	}
-	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+	if err := validateSidePrices(opts.SLPrice, opts.TPPrice, opts.ClearOther); err != nil {
 		return err
 	}
-	kind, err := protection.ParseKind(opts.Kind)
+	slType, tpType, err := parseSideTriggerBys(opts.TriggerBy, opts.SLTriggerBy, opts.TPTriggerBy)
 	if err != nil {
 		return err
-	}
-	var priceType futures.StopTriggerType
-	switch strings.ToUpper(opts.TriggerBy) {
-	case "", "LAST":
-		priceType = futures.StopTriggerTypeLast
-	case "INDEX":
-		priceType = futures.StopTriggerTypeIndex
-	case "MARK":
-		priceType = futures.StopTriggerTypeMark
-	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
 	}
 	f := opts.Factory
 	target := protection.Position{Symbol: opts.Symbol, PositionID: opts.PositionID}
@@ -181,29 +190,106 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 	if err != nil {
 		return err
 	}
-	want := planAttach(current, kind, opts.TriggerPrice, priceType, opts.ClearOther)
+	want := planAttachSides(current, opts.SLPrice, opts.TPPrice, slType, tpType, opts.ClearOther)
 	if err := target.Apply(ctx, f.Client, current, want); err != nil {
 		return err
 	}
-	return f.IO.Resultln("Attached", kind.String(), "to position on", opts.Symbol)
+	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to position on", opts.Symbol)
 }
 
-// planAttach derives the desired State for an attach: starting from the
-// current state it overwrites the requested side with the new price and
-// either preserves or clears the unchanged side per clearOther.
-func planAttach(current protection.State, k protection.Kind, price string, priceType futures.StopTriggerType, clearOther bool) protection.State {
+// validateSidePrices enforces the attach flag invariants:
+//   - at least one of --sl-price / --tp-price must be set
+//   - given prices must be positive numbers
+//   - --clear-other only makes sense when exactly one side is given
+func validateSidePrices(slPrice, tpPrice string, clearOther bool) error {
+	if slPrice == "" && tpPrice == "" {
+		return clierr.Usagef("provide --sl-price, --tp-price, or both")
+	}
+	if slPrice != "" {
+		if err := clierr.PositiveNumber("--sl-price", slPrice); err != nil {
+			return err
+		}
+	}
+	if tpPrice != "" {
+		if err := clierr.PositiveNumber("--tp-price", tpPrice); err != nil {
+			return err
+		}
+	}
+	if clearOther && slPrice != "" && tpPrice != "" {
+		return clierr.Usagef("--clear-other is meaningless when both --sl-price and --tp-price are given")
+	}
+	return nil
+}
+
+// planAttachSides derives the desired State from current plus whichever
+// sides the caller wants to set. Unspecified sides are preserved (carrying
+// any TriggerID through to Apply for routing) unless clearOther is set.
+func planAttachSides(current protection.State, slPrice, tpPrice string, slType, tpType futures.StopTriggerType, clearOther bool) protection.State {
 	want := current
-	switch k {
-	case protection.KindStopLoss:
-		want.SL = protection.Stop{Price: price, PriceType: priceType, TriggerID: current.SL.TriggerID}
-		if clearOther {
+	if slPrice != "" {
+		want.SL = protection.Stop{Price: slPrice, PriceType: slType, TriggerID: current.SL.TriggerID}
+	}
+	if tpPrice != "" {
+		want.TP = protection.Stop{Price: tpPrice, PriceType: tpType, TriggerID: current.TP.TriggerID}
+	}
+	if clearOther {
+		if slPrice != "" && tpPrice == "" {
 			want.TP = protection.Stop{}
 		}
-	case protection.KindTakeProfit:
-		want.TP = protection.Stop{Price: price, PriceType: priceType, TriggerID: current.TP.TriggerID}
-		if clearOther {
+		if tpPrice != "" && slPrice == "" {
 			want.SL = protection.Stop{}
 		}
 	}
 	return want
+}
+
+// changedSideLabel produces a human-readable summary of which sides the
+// command set, used in the success line.
+func changedSideLabel(slPrice, tpPrice string) string {
+	switch {
+	case slPrice != "" && tpPrice != "":
+		return "SL+TP"
+	case slPrice != "":
+		return "SL"
+	default:
+		return "TP"
+	}
+}
+
+// parseSideTriggerBys resolves per-side trigger feeds from the hybrid
+// flag set: a per-side override wins when given, otherwise both sides
+// fall back to the common --trigger-by value.
+func parseSideTriggerBys(common, slOverride, tpOverride string) (futures.StopTriggerType, futures.StopTriggerType, error) {
+	commonType, err := parseTriggerBy(common)
+	if err != nil {
+		return 0, 0, err
+	}
+	slType := commonType
+	if slOverride != "" {
+		slType, err = parseTriggerBy(slOverride)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	tpType := commonType
+	if tpOverride != "" {
+		tpType, err = parseTriggerBy(tpOverride)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	return slType, tpType, nil
+}
+
+// parseTriggerBy maps one trigger-by value to the gateway enum.
+func parseTriggerBy(s string) (futures.StopTriggerType, error) {
+	switch strings.ToUpper(s) {
+	case "", "LAST":
+		return futures.StopTriggerTypeLast, nil
+	case "INDEX":
+		return futures.StopTriggerTypeIndex, nil
+	case "MARK":
+		return futures.StopTriggerTypeMark, nil
+	}
+	return 0, clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }

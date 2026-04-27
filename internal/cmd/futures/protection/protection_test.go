@@ -214,30 +214,32 @@ func TestOrderApplyEditsExistingStandaloneTrigger(t *testing.T) {
 	}
 }
 
-// TestOrderApplyTPPreservingSLDoesTwoCalls locks in the documented gateway
-// quirk: when adding TP to an order that already has a standalone SL trigger,
-// the gateway needs two close-stop calls. Both calls must send SL alongside
-// TP: a TP-only first call would let the gateway interpret the missing SL
-// field as "clear SL" and drop the existing standalone SL trigger before
-// evaluating the TP price.
-func TestOrderApplyTPPreservingSLDoesTwoCalls(t *testing.T) {
+// TestOrderApplyEditsBothTriggersIndividually covers case D: when both SL
+// and TP exist as standalone triggers and both prices change, Apply must
+// emit two EditStopOrder calls keyed by trigger id rather than a single
+// /order/close/stop full-body call (the gateway's SL-update branch in
+// stop_order_close_logic.go early-returns and would never touch TP).
+func TestOrderApplyEditsBothTriggersIndividually(t *testing.T) {
 	c, doer := newClient(t)
 	current := State{
-		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "abc"},
+		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-1"},
+		TP: Stop{Price: "75000", PriceType: futures.StopTriggerTypeLast, TriggerID: "tp-1"},
 	}
-	want := current
-	want.TP = Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast}
+	want := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-1"},
+		TP: Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast, TriggerID: "tp-1"},
+	}
 
-	var first, second futures.StopOrderCloseReq
+	var slCall, tpCall futures.StopOrderEditReq
 	gomock.InOrder(
-		doer.EXPECT().Post(gomock.Any(), pathStopClose, gomock.Any(), gomock.Any()).
+		doer.EXPECT().Post(gomock.Any(), pathStopOrderEdit, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
-				first = in.(futures.StopOrderCloseReq)
+				slCall = in.(futures.StopOrderEditReq)
 				return nil
 			}),
-		doer.EXPECT().Post(gomock.Any(), pathStopClose, gomock.Any(), gomock.Any()).
+		doer.EXPECT().Post(gomock.Any(), pathStopOrderEdit, gomock.Any(), gomock.Any()).
 			DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
-				second = in.(futures.StopOrderCloseReq)
+				tpCall = in.(futures.StopOrderEditReq)
 				return nil
 			}),
 	)
@@ -245,45 +247,117 @@ func TestOrderApplyTPPreservingSLDoesTwoCalls(t *testing.T) {
 	if err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want); err != nil {
 		t.Fatal(err)
 	}
-	if first.TakeProfitPrice != "80000" || first.StopLossPrice != "65000" {
-		t.Errorf("first call=%+v want both SL=65000 and TP=80000", first)
+	if slCall.StopOrderID != "sl-1" || slCall.StopPrice != "60000" {
+		t.Errorf("SL edit=%+v want trigger=sl-1 price=60000", slCall)
 	}
-	if second.TakeProfitPrice != "80000" || second.StopLossPrice != "65000" {
-		t.Errorf("second call=%+v want both SL and TP restated", second)
+	if tpCall.StopOrderID != "tp-1" || tpCall.StopPrice != "80000" {
+		t.Errorf("TP edit=%+v want trigger=tp-1 price=80000", tpCall)
 	}
 }
 
-// TestOrderApplyTPRejectionPreservesSL is the regression for the bug where a
-// failed TP attach would silently wipe an existing standalone SL trigger. The
-// first StopOrderClose call must carry the existing SL price so the gateway
-// has no excuse to clear SL when it rejects the TP value.
-func TestOrderApplyTPRejectionPreservesSL(t *testing.T) {
-	c, doer := newClient(t)
+// TestOrderApplyMixedFreshAndExistingReturnsExplicitError covers case E:
+// when one side already has a standalone trigger and the other side is
+// fresh, /order/close/stop's update path early-returns before reaching
+// the missing side. Apply must surface that limitation as a clear error
+// pointing the user at a manual recovery path instead of silently losing
+// one side's protection.
+func TestOrderApplyMixedFreshAndExistingReturnsExplicitError(t *testing.T) {
+	c, _ := newClient(t)
 	current := State{
-		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "abc"},
+		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-abc"},
 	}
-	want := current
-	want.TP = Stop{Price: "1200", PriceType: futures.StopTriggerTypeLast}
-
-	apiErr := &futures.APIError{
-		Code: 10048, Message: "the take-profit price should be higher than the latest price", Status: 200,
+	want := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-abc"},
+		TP: Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast},
 	}
-	var first futures.StopOrderCloseReq
-	doer.EXPECT().Post(gomock.Any(), pathStopClose, gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
-			first = in.(futures.StopOrderCloseReq)
-			return apiErr
-		})
 
 	err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want)
-	if !errors.Is(err, apiErr) {
-		t.Fatalf("err=%v want %v", err, apiErr)
+	if err == nil {
+		t.Fatal("expected explicit error for mixed fresh/existing scenario")
 	}
-	if first.StopLossPrice != "65000" {
-		t.Errorf("first call StopLossPrice=%q want 65000 (SL must be carried so gateway cannot clear it)", first.StopLossPrice)
+	if !strings.Contains(err.Error(), "sl-abc") {
+		t.Errorf("err=%v should reference the existing trigger id sl-abc", err)
 	}
-	if first.TakeProfitPrice != "1200" {
-		t.Errorf("first call TakeProfitPrice=%q want 1200", first.TakeProfitPrice)
+	if !strings.Contains(err.Error(), "trigger cancel") {
+		t.Errorf("err=%v should suggest the manual cancel workaround", err)
+	}
+	// No mock expectations: gomock would have failed the test if Apply called the gateway.
+}
+
+// TestOrderApplyDualTriggerByPerSide locks in that each side's PriceType
+// is sent independently in the cold-start body, so callers can route SL
+// on one feed (e.g. MARK) while TP runs on another (e.g. LAST).
+func TestOrderApplyDualTriggerByPerSide(t *testing.T) {
+	c, doer := newClient(t)
+	want := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeMark},
+		TP: Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast},
+	}
+
+	var got futures.StopOrderCloseReq
+	expectStopClose(doer, &got)
+
+	if err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, State{}, want); err != nil {
+		t.Fatal(err)
+	}
+	if got.StopLossPriceType != futures.StopTriggerTypeMark {
+		t.Errorf("StopLossPriceType=%v want MARK", got.StopLossPriceType)
+	}
+	if got.TakeProfitPriceType != futures.StopTriggerTypeLast {
+		t.Errorf("TakeProfitPriceType=%v want LAST", got.TakeProfitPriceType)
+	}
+}
+
+// TestOrderApplyAddTPWhenSLStandaloneReturnsExplicitError covers the case
+// where the user asks to set TP while SL already exists as a standalone
+// trigger (and TP is fresh). The gateway's /order/close/stop SL block
+// hits ConditionOrderUpdate-and-return on every call, so the TP block is
+// never reached and the request silently loses TP. Apply must surface
+// that as an explicit error pointing at the manual recovery path.
+func TestOrderApplyAddTPWhenSLStandaloneReturnsExplicitError(t *testing.T) {
+	c, _ := newClient(t)
+	current := State{
+		SL: Stop{Price: "65000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-abc"},
+	}
+	want := current
+	want.TP = Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast}
+
+	err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want)
+	if err == nil {
+		t.Fatal("expected explicit error when adding TP while SL is standalone")
+	}
+	if !strings.Contains(err.Error(), "sl-abc") {
+		t.Errorf("err=%v should reference SL trigger id sl-abc", err)
+	}
+	if !strings.Contains(err.Error(), "trigger cancel") {
+		t.Errorf("err=%v should suggest the manual cancel workaround", err)
+	}
+}
+
+// TestOrderApplyAddSLWhenTPStandaloneRunsColdStart confirms the
+// reverse direction works without an explicit error: when TP is already
+// standalone and the user adds SL, the gateway's SL block takes the
+// fresh-entrust path (no early return) and the TP block then runs its
+// update path. A single /order/close/stop call carries both fields.
+func TestOrderApplyAddSLWhenTPStandaloneRunsColdStart(t *testing.T) {
+	c, doer := newClient(t)
+	current := State{
+		TP: Stop{Price: "80000", PriceType: futures.StopTriggerTypeLast, TriggerID: "tp-abc"},
+	}
+	want := current
+	want.SL = Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast}
+
+	var got futures.StopOrderCloseReq
+	expectStopClose(doer, &got)
+
+	if err := (Order{Symbol: "BTCUSDT", OrderID: "1001"}).Apply(context.Background(), c, current, want); err != nil {
+		t.Fatal(err)
+	}
+	if got.StopLossPrice != "60000" {
+		t.Errorf("SL=%q want 60000", got.StopLossPrice)
+	}
+	if got.TakeProfitPrice != "80000" {
+		t.Errorf("TP=%q want 80000 (preserved)", got.TakeProfitPrice)
 	}
 }
 
@@ -363,6 +437,72 @@ func TestPositionApplyEditsTriggerInPlace(t *testing.T) {
 	}
 }
 
+// TestPositionApplyEditsBothTriggersIndividually covers case D on a
+// position: when both SL and TP exist as standalone triggers and both
+// prices change, Apply emits 2× EditStopOrder keyed by trigger id.
+func TestPositionApplyEditsBothTriggersIndividually(t *testing.T) {
+	c, doer := newClient(t)
+	current := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-pos"},
+		TP: Stop{Price: "90000", PriceType: futures.StopTriggerTypeLast, TriggerID: "tp-pos"},
+	}
+	want := State{
+		SL: Stop{Price: "55000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-pos"},
+		TP: Stop{Price: "95000", PriceType: futures.StopTriggerTypeLast, TriggerID: "tp-pos"},
+	}
+
+	var slCall, tpCall futures.StopOrderEditReq
+	gomock.InOrder(
+		doer.EXPECT().Post(gomock.Any(), pathStopOrderEdit, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
+				slCall = in.(futures.StopOrderEditReq)
+				return nil
+			}),
+		doer.EXPECT().Post(gomock.Any(), pathStopOrderEdit, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, in any, _ any) error {
+				tpCall = in.(futures.StopOrderEditReq)
+				return nil
+			}),
+	)
+
+	if err := (Position{Symbol: "BTCUSDT", PositionID: "42"}).Apply(context.Background(), c, current, want); err != nil {
+		t.Fatal(err)
+	}
+	if slCall.StopOrderID != "sl-pos" || slCall.StopPrice != "55000" {
+		t.Errorf("SL edit=%+v want trigger=sl-pos price=55000", slCall)
+	}
+	if tpCall.StopOrderID != "tp-pos" || tpCall.StopPrice != "95000" {
+		t.Errorf("TP edit=%+v want trigger=tp-pos price=95000", tpCall)
+	}
+}
+
+// TestPositionApplyMixedFreshAndExistingRunsColdStart confirms that a
+// position with one standalone side and a fresh other side still routes
+// through cold-start /position/close/stop with both fields filled.
+// Unlike /order/close/stop, the position handler runs SL/TP in separate
+// goroutines and has no early-return bug, so this combination is
+// recoverable in a single call.
+func TestPositionApplyMixedFreshAndExistingRunsColdStart(t *testing.T) {
+	c, doer := newClient(t)
+	current := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-pos"},
+	}
+	want := State{
+		SL: Stop{Price: "60000", PriceType: futures.StopTriggerTypeLast, TriggerID: "sl-pos"},
+		TP: Stop{Price: "90000", PriceType: futures.StopTriggerTypeLast},
+	}
+
+	var got futures.StopClosePositionReq
+	expectPositionStopClose(doer, &got)
+
+	if err := (Position{Symbol: "BTCUSDT", PositionID: "42"}).Apply(context.Background(), c, current, want); err != nil {
+		t.Fatal(err)
+	}
+	if got.StopLossPrice != "60000" || got.TakeProfitPrice != "90000" {
+		t.Errorf("body=%+v want SL=60000 TP=90000", got)
+	}
+}
+
 // TestPositionApplyColdStartUsesPositionEndpoint verifies that the
 // position-target Apply hits the position close/stop endpoint, not the order
 // one.
@@ -424,23 +564,6 @@ func TestIsAttachedReturnsFalseWhenMissing(t *testing.T) {
 	}
 	if got {
 		t.Error("missing trigger must be reported as not attached")
-	}
-}
-
-// TestParseKindRejectsJunk locks in the user-facing parser.
-func TestParseKindRejectsJunk(t *testing.T) {
-	for _, s := range []string{"SL", "sl", "stop-loss"} {
-		if k, err := ParseKind(s); err != nil || k != KindStopLoss {
-			t.Errorf("ParseKind(%q)=%v,%v want KindStopLoss,nil", s, k, err)
-		}
-	}
-	for _, s := range []string{"TP", "tp", "take-profit"} {
-		if k, err := ParseKind(s); err != nil || k != KindTakeProfit {
-			t.Errorf("ParseKind(%q)=%v,%v want KindTakeProfit,nil", s, k, err)
-		}
-	}
-	if _, err := ParseKind("garbage"); err == nil {
-		t.Error("ParseKind(garbage) should error")
 	}
 }
 

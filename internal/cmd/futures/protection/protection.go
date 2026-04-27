@@ -23,40 +23,9 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
-	"github.com/vika2603/100x-cli/internal/clierr"
 )
-
-// Kind names which side of the protection a request is updating.
-type Kind int
-
-const (
-	// KindStopLoss is the stop-loss side.
-	KindStopLoss Kind = iota
-	// KindTakeProfit is the take-profit side.
-	KindTakeProfit
-)
-
-// String returns the canonical CLI label.
-func (k Kind) String() string {
-	if k == KindTakeProfit {
-		return "TP"
-	}
-	return "SL"
-}
-
-// ParseKind accepts the user-typed CLI labels.
-func ParseKind(s string) (Kind, error) {
-	switch strings.ToUpper(s) {
-	case "SL", "STOP-LOSS":
-		return KindStopLoss, nil
-	case "TP", "TAKE-PROFIT":
-		return KindTakeProfit, nil
-	}
-	return 0, clierr.Usagef("unknown protection kind %q (want SL|TP)", s)
-}
 
 // Stop is one observed SL or TP setting.
 //
@@ -137,10 +106,17 @@ func (o Order) Inspect(ctx context.Context, c *futures.Client) (State, error) {
 }
 
 // Apply emits the minimum gateway sequence to make want the new state. It
-// hides three branches: editing an existing standalone trigger via
-// EditStopOrder, the documented two-call TP-while-preserving-SL quirk, and
-// full-body StopOrderClose (used both for trigger attach with side
-// preservation and for order edit's re-attach of both sides).
+// routes through five branches:
+//
+//   - single-side change with an existing standalone TriggerID → /order/stop/edit
+//   - both-side change with both standalone TriggerIDs present → 2× /order/stop/edit
+//   - the documented two-call TP-while-preserving-SL quirk
+//   - mixed: one side already standalone, the other side fresh — gateway's
+//     /order/close/stop SL block early-returns once it has run an update,
+//     so it never reaches the TP block. We surface an explicit error
+//     instead of letting the request silently lose protection.
+//   - cold-start full-body StopOrderClose for everything else (first-time
+//     attach, ClearOther, order edit's re-attach of both sides).
 func (o Order) Apply(ctx context.Context, c *futures.Client, current, want State) error {
 	slChanged := want.SL != current.SL
 	tpChanged := want.TP != current.TP
@@ -165,22 +141,34 @@ func (o Order) Apply(ctx context.Context, c *futures.Client, current, want State
 		return err
 	}
 
-	// Adding TP while keeping an existing standalone SL is the documented
-	// two-call quirk. Both calls send the full SL+TP body: a TP-only first
-	// call would make the gateway interpret the absent SL field as "clear
-	// SL" and drop the standalone SL trigger before it even evaluated the
-	// (possibly bad) TP price, losing the user's existing protection.
-	if tpChanged && !slChanged && want.TP.Set() && current.TP.TriggerID == "" && current.SL.TriggerID != "" {
-		body := futures.StopOrderCloseReq{
-			Market: o.Symbol, OrderID: o.OrderID,
-			StopLossPrice: current.SL.Price, StopLossPriceType: current.SL.PriceType,
-			TakeProfitPrice: want.TP.Price, TakeProfitPriceType: want.TP.PriceType,
-		}
-		if _, err := c.Order.StopOrderClose(ctx, body); err != nil {
+	// Both sides change and both already exist as standalone triggers: edit
+	// each via its own trigger id. /order/close/stop's update path early-
+	// returns after handling SL, so a single full-body call would never
+	// touch TP.
+	if slChanged && tpChanged && current.SL.TriggerID != "" && current.TP.TriggerID != "" && want.SL.Set() && want.TP.Set() {
+		if _, err := c.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
+			Market: o.Symbol, StopOrderID: current.SL.TriggerID,
+			StopPrice: want.SL.Price, StopPriceType: want.SL.PriceType,
+		}); err != nil {
 			return err
 		}
-		_, err := c.Order.StopOrderClose(ctx, body)
+		_, err := c.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
+			Market: o.Symbol, StopOrderID: current.TP.TriggerID,
+			StopPrice: want.TP.Price, StopPriceType: want.TP.PriceType,
+		})
 		return err
+	}
+
+	// SL already standalone + want to also set TP: the gateway's
+	// /order/close/stop handler runs the SL block first; finding a
+	// standalone SL it goes through ConditionOrderUpdate and early-returns
+	// before the TP block can fire, so the requested TP is silently
+	// dropped. The reverse (TP standalone + want SL too) works because
+	// the SL block then takes the fresh-entrust path with no early
+	// return, and the TP block subsequently updates. Surface the broken
+	// direction as an explicit error pointing at the manual recovery.
+	if want.SL.Set() && want.TP.Set() && current.SL.TriggerID != "" && current.TP.TriggerID == "" {
+		return fmt.Errorf("cannot set SL and TP on order %s in one call: SL is already a standalone trigger; cancel it first via `100x futures trigger cancel %s %s` and retry", o.OrderID, o.Symbol, current.SL.TriggerID)
 	}
 
 	// Cold-start full-body StopOrderClose. Used for first-time attach with
@@ -206,13 +194,10 @@ func (o Order) Verify(ctx context.Context, c *futures.Client, want State) error 
 	if err != nil {
 		return err
 	}
-	if want.SL.Set() && detail.StopLossPrice != want.SL.Price {
-		return fmt.Errorf("gateway accepted attach but SL on order %s is %q, want %q", o.OrderID, detail.StopLossPrice, want.SL.Price)
+	if err := verifySide("order", o.OrderID, "SL", detail.StopLossPrice, want.SL); err != nil {
+		return err
 	}
-	if want.TP.Set() && detail.TakeProfitPrice != want.TP.Price {
-		return fmt.Errorf("gateway accepted attach but TP on order %s is %q, want %q", o.OrderID, detail.TakeProfitPrice, want.TP.Price)
-	}
-	return nil
+	return verifySide("order", o.OrderID, "TP", detail.TakeProfitPrice, want.TP)
 }
 
 // Position is the protection layer for one open position.
@@ -258,8 +243,8 @@ func (p Position) Inspect(ctx context.Context, c *futures.Client) (State, error)
 }
 
 // Apply emits the minimum gateway sequence to make want the new state on the
-// position. There is no two-call quirk here; the gateway accepts both sides
-// in one StopClosePosition call.
+// position. Same routing as Order.Apply except there is no TP-preserving-SL
+// two-call quirk on the position endpoint.
 func (p Position) Apply(ctx context.Context, c *futures.Client, current, want State) error {
 	slChanged := want.SL != current.SL
 	tpChanged := want.TP != current.TP
@@ -282,6 +267,25 @@ func (p Position) Apply(ctx context.Context, c *futures.Client, current, want St
 		return err
 	}
 
+	if slChanged && tpChanged && current.SL.TriggerID != "" && current.TP.TriggerID != "" && want.SL.Set() && want.TP.Set() {
+		if _, err := c.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
+			Market: p.Symbol, StopOrderID: current.SL.TriggerID,
+			StopPrice: want.SL.Price, StopPriceType: want.SL.PriceType,
+		}); err != nil {
+			return err
+		}
+		_, err := c.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
+			Market: p.Symbol, StopOrderID: current.TP.TriggerID,
+			StopPrice: want.TP.Price, StopPriceType: want.TP.PriceType,
+		})
+		return err
+	}
+
+	// /position/close/stop runs its SL and TP blocks in separate
+	// goroutines, so unlike /order/close/stop there is no early-return bug
+	// when one side is already standalone — both blocks always fire and
+	// take their respective update / entrust path. Cold-start handles
+	// every remaining shape; Verify catches per-side silent failures.
 	body := futures.StopClosePositionReq{Market: p.Symbol, PositionID: p.PositionID}
 	if want.SL.Set() {
 		body.StopLossPrice = want.SL.Price
@@ -304,13 +308,30 @@ func (p Position) Verify(ctx context.Context, c *futures.Client, want State) err
 	if pos == nil {
 		return fmt.Errorf("position %s not found after attach", p.PositionID)
 	}
-	if want.SL.Set() && pos.StopLossPrice != want.SL.Price {
-		return fmt.Errorf("gateway accepted attach but SL on position %s is %q, want %q", p.PositionID, pos.StopLossPrice, want.SL.Price)
+	if err := verifySide("position", p.PositionID, "SL", pos.StopLossPrice, want.SL); err != nil {
+		return err
 	}
-	if want.TP.Set() && pos.TakeProfitPrice != want.TP.Price {
-		return fmt.Errorf("gateway accepted attach but TP on position %s is %q, want %q", p.PositionID, pos.TakeProfitPrice, want.TP.Price)
+	return verifySide("position", p.PositionID, "TP", pos.TakeProfitPrice, want.TP)
+}
+
+// verifySide compares the gateway's read-back value for one side against
+// what the caller wanted. The gateway returns "-" or "" when a side is
+// unset, so a mismatch where got is unset means the gateway accepted the
+// request but did not persist that side — most often because the price
+// fell on the wrong side of the order/position direction or because the
+// per-user condition-order limit is full. Surface that explicitly instead
+// of letting the user decode a literal `is "-"` string.
+func verifySide(scope, id, side, got string, want Stop) error {
+	if !want.Set() {
+		return nil
 	}
-	return nil
+	if got == want.Price {
+		return nil
+	}
+	if !priceSet(got) {
+		return fmt.Errorf("gateway accepted attach but %s on %s %s was not applied (requested %s); check the price is on the profit/loss side of the %s direction, or that the per-user condition-order limit is not full", side, scope, id, want.Price, scope)
+	}
+	return fmt.Errorf("gateway accepted attach but %s on %s %s is %q, want %q", side, scope, id, got, want.Price)
 }
 
 // IsAttached reports whether triggerID is an attached SL/TP trigger. The
