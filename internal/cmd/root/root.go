@@ -2,6 +2,7 @@
 package root
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -89,7 +90,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	cmd.PersistentFlags().BoolVarP(&gf.quiet, "quiet", "q", false, "hide human-readable stdout")
 	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "answer yes to confirmation prompts")
 	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "color mode: auto | always | never (NO_COLOR honored)")
-	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 30*time.Second, "HTTP timeout per request")
+	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 15*time.Second, "HTTP timeout per request")
 	_ = cmd.RegisterFlagCompletionFunc("profile", profile.CompleteNameFlag)
 	_ = cmd.RegisterFlagCompletionFunc("color", cobra.FixedCompletions([]string{"auto", "always", "never"}, cobra.ShellCompDirectiveNoFileComp))
 
@@ -101,6 +102,13 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		f.IO = r
 		f.Yes = gf.yes
 		f.Timeout = gf.timeout
+
+		// --timeout bounds the whole command, including retries.
+		if gf.timeout > 0 {
+			ctx, cancel := context.WithTimeout(c.Context(), gf.timeout)
+			c.SetContext(ctx)
+			cobra.OnFinalize(cancel)
+		}
 
 		// Group commands display help; their RunE only calls c.Help(), which
 		// never touches the API. Skip client load structurally rather than

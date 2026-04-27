@@ -33,13 +33,16 @@ type LoadOptions struct {
 	// to E100X_PROFILE / Config.Default per config.Resolve.
 	RequestedProfile string
 
-	// Timeout caps each HTTP request the SDK makes. Required.
+	// Timeout is a backstop on the underlying http.Client. The real
+	// per-command budget comes from the caller's ctx.
 	Timeout time.Duration
 
 	// Public, when true, builds an unsigned client suitable for public market
 	// endpoints. Profile resolution and credential loading are skipped.
 	Public bool
 }
+
+const httpClientBackstop = 5 * time.Minute
 
 // Load resolves the session for one CLI invocation.
 //
@@ -50,7 +53,7 @@ type LoadOptions struct {
 // wrapped credential-load error; callers decide whether to surface or
 // swallow them.
 func Load(opts LoadOptions) (Session, error) {
-	httpClient := &http.Client{Timeout: opts.Timeout}
+	httpClient := &http.Client{Timeout: httpClientBackstop}
 
 	if opts.Public {
 		endpoint, err := config.Endpoint()
