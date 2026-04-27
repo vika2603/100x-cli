@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -93,7 +94,9 @@ func runList(ctx context.Context, opts *ListOptions) error {
 			return err
 		}
 		records := stopRecords(resp.Records)
-		return f.IO.Render(records, func() error { return printStops(f.IO, records, "No active triggers found.") })
+		return f.IO.Render(records, func() error {
+			return printStops(f.IO, records, "No active triggers found.", opts.Symbol != "")
+		})
 	}
 	resp, err := f.Client.Order.FinishedStopOrder(ctx, futures.FinishedStopOrderReq{
 		Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
@@ -102,7 +105,9 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		return err
 	}
 	records := stopRecords(resp.Records)
-	return f.IO.Render(records, func() error { return printStops(f.IO, records, "No finished triggers found.") })
+	return f.IO.Render(records, func() error {
+		return printStops(f.IO, records, "No finished triggers found.", opts.Symbol != "")
+	})
 }
 
 func stopRecords(rows []futures.StopOrderItem) []futures.StopOrderItem {
@@ -112,26 +117,47 @@ func stopRecords(rows []futures.StopOrderItem) []futures.StopOrderItem {
 	return rows
 }
 
-func printStops(io *output.Renderer, rows []futures.StopOrderItem, emptyMessage string) error {
+// printStops omits the Symbol column when symbolFiltered is true: the user
+// already typed the symbol on the command line, so repeating it in every row
+// is noise.
+func printStops(io *output.Renderer, rows []futures.StopOrderItem, emptyMessage string, symbolFiltered bool) error {
 	if len(rows) == 0 {
 		return io.Emptyln(emptyMessage)
 	}
+	cols := []output.Column{output.LCol("Trigger ID")}
+	if !symbolFiltered {
+		cols = append(cols, output.LCol("Symbol"))
+	}
+	cols = append(cols,
+		output.LCol("Type"), output.LCol("Side"), output.LCol("Status"),
+		output.RCol("Trigger Price"), output.RCol("Order Price"), output.RCol("Size"),
+		output.LCol("Order ID"), output.LCol("Position ID"), output.LCol("Created"),
+	)
 	out := make([][]string, 0, len(rows))
 	for _, s := range rows {
-		out = append(out, []string{
-			s.ContractOrderID,
-			s.Market,
+		row := []string{s.ContractOrderID}
+		if !symbolFiltered {
+			row = append(row, s.Market)
+		}
+		row = append(row,
 			format.StopOrderType(io, s.ContractOrderType),
 			format.Side(io, s.Side),
 			format.StopOrderStatus(io, s.Status),
 			s.TriggerPrice,
 			s.OrderPrice,
 			s.Size,
-		})
+			emptyDashID(s.OrderID),
+			emptyDashID(s.PositionID),
+			format.UnixAuto(s.OrderTime),
+		)
+		out = append(out, row)
 	}
-	return io.Table([]output.Column{
-		output.LCol("Trigger ID"), output.LCol("Symbol"),
-		output.LCol("Type"), output.LCol("Side"), output.LCol("Status"),
-		output.RCol("Trigger Price"), output.RCol("Order Price"), output.RCol("Size"),
-	}, out)
+	return io.Table(cols, out)
+}
+
+func emptyDashID(id int64) string {
+	if id == 0 {
+		return "-"
+	}
+	return strconv.FormatInt(id, 10)
 }

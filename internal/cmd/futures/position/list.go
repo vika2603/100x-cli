@@ -74,7 +74,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if resp == nil {
 		resp = []futures.PendingPositionDetail{}
 	}
-	return f.IO.Render(resp, func() error { return printOpen(f.IO, resp) })
+	return f.IO.Render(resp, func() error { return printOpen(f.IO, resp, opts.Symbol != "") })
 }
 
 // NewCmdHistory builds the `position history` cobra command.
@@ -104,7 +104,7 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 			if records == nil {
 				records = []futures.FinishedPositionDetail{}
 			}
-			return f.IO.Render(records, func() error { return printClosed(f.IO, records) })
+			return f.IO.Render(records, func() error { return printClosed(f.IO, records, opts.Symbol != "") })
 		},
 	}
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show closed positions for this symbol")
@@ -114,42 +114,65 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 	return c
 }
 
-func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error {
+func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail, symbolFiltered bool) error {
 	if len(rows) == 0 {
 		return io.Emptyln("No open positions found.")
 	}
-	out := make([][]string, 0, len(rows))
-	for _, p := range rows {
-		out = append(out, []string{
-			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
-			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal, format.Percent(p.Roe),
-			format.UnixMillis(p.CreateTime),
-		})
+	cols := []output.Column{output.LCol("Position ID")}
+	if !symbolFiltered {
+		cols = append(cols, output.LCol("Symbol"))
 	}
-	return io.Table([]output.Column{
-		output.LCol("Position ID"), output.LCol("Symbol"), output.LCol("Side"),
+	cols = append(cols,
+		output.LCol("Side"), output.RCol("Lev"),
 		output.RCol("Size"), output.RCol("Entry"), output.RCol("Liq Price"),
 		output.RCol("Margin"), output.RCol("uPnL"), output.RCol("ROE"),
 		output.LCol("Opened"),
-	}, out)
+	)
+	out := make([][]string, 0, len(rows))
+	for _, p := range rows {
+		row := []string{strconv.Itoa(p.PositionID)}
+		if !symbolFiltered {
+			row = append(row, p.Market)
+		}
+		row = append(row,
+			format.Side(io, p.Side),
+			p.Leverage+"x",
+			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal,
+			format.Percent(p.Roe),
+			format.UnixMillis(p.CreateTime),
+		)
+		out = append(out, row)
+	}
+	return io.Table(cols, out)
 }
 
-func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) error {
+func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail, symbolFiltered bool) error {
 	if len(rows) == 0 {
 		return io.Emptyln("No closed positions found.")
 	}
-	out := make([][]string, 0, len(rows))
-	for _, p := range rows {
-		out = append(out, []string{
-			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
-			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal, format.Percent(p.Roe),
-			format.UnixMillis(p.UpdateTime),
-		})
+	cols := []output.Column{output.LCol("Position ID")}
+	if !symbolFiltered {
+		cols = append(cols, output.LCol("Symbol"))
 	}
-	return io.Table([]output.Column{
-		output.LCol("Position ID"), output.LCol("Symbol"), output.LCol("Side"),
+	cols = append(cols,
+		output.LCol("Side"),
 		output.RCol("Open"), output.RCol("Close"), output.RCol("Size"),
 		output.RCol("PnL"), output.RCol("ROE"),
 		output.LCol("Closed"),
-	}, out)
+	)
+	out := make([][]string, 0, len(rows))
+	for _, p := range rows {
+		row := []string{strconv.Itoa(p.PositionID)}
+		if !symbolFiltered {
+			row = append(row, p.Market)
+		}
+		row = append(row,
+			format.Side(io, p.Side),
+			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal,
+			format.Percent(p.Roe),
+			format.UnixMillis(p.UpdateTime),
+		)
+		out = append(out, row)
+	}
+	return io.Table(cols, out)
 }

@@ -90,6 +90,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
 		return err
 	}
+	symbolFiltered := opts.Symbol != ""
 	if !opts.Finished {
 		resp, err := f.Client.Order.PendingOrder(ctx, futures.PendingOrderReq{
 			Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
@@ -102,7 +103,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 			// Pending orders are always limit (market orders fill or reject
 			// immediately and never reach this list), so the Type column would
 			// be a constant LIMIT and is omitted.
-			return printOrders(f.IO, records, "Created", "No open orders found.", false, func(o futures.OrderItem) string {
+			return printOrders(f.IO, records, "Created", "No open orders found.", false, symbolFiltered, func(o futures.OrderItem) string {
 				return format.UnixSecondsFloat(o.CreateTime)
 			})
 		})
@@ -120,7 +121,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	}
 	records := orderRecords(resp.Records)
 	return f.IO.Render(records, func() error {
-		return printOrders(f.IO, records, "Finished", "No finished orders found.", true, func(o futures.OrderItem) string {
+		return printOrders(f.IO, records, "Finished", "No finished orders found.", true, symbolFiltered, func(o futures.OrderItem) string {
 			return format.UnixSecondsFloat(o.UpdateTime)
 		})
 	})
@@ -133,13 +134,15 @@ func orderRecords(rows []futures.OrderItem) []futures.OrderItem {
 	return rows
 }
 
-func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, emptyMessage string, showType bool, timeValue func(futures.OrderItem) string) error {
+func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, emptyMessage string, showType, symbolFiltered bool, timeValue func(futures.OrderItem) string) error {
 	if len(rows) == 0 {
 		return io.Emptyln(emptyMessage)
 	}
-	cols := []output.Column{
-		output.LCol("Order ID"), output.LCol("Symbol"), output.LCol("Side"),
+	cols := []output.Column{output.LCol("Order ID")}
+	if !symbolFiltered {
+		cols = append(cols, output.LCol("Symbol"))
 	}
+	cols = append(cols, output.LCol("Side"))
 	if showType {
 		cols = append(cols, output.LCol("Type"))
 	}
@@ -151,11 +154,11 @@ func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, empt
 	)
 	out := make([][]string, 0, len(rows))
 	for _, o := range rows {
-		row := []string{
-			strconv.FormatInt(o.OrderID, 10),
-			o.Market,
-			format.Side(io, o.Side),
+		row := []string{strconv.FormatInt(o.OrderID, 10)}
+		if !symbolFiltered {
+			row = append(row, o.Market)
 		}
+		row = append(row, format.Side(io, o.Side))
 		if showType {
 			row = append(row, format.OrderType(o.Type))
 		}

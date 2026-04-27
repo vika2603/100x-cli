@@ -83,18 +83,32 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		}
 		resp = filtered
 	}
+	currencyFiltered := opts.Currency != ""
 	return f.IO.Render(resp, func() error {
 		if len(resp) == 0 {
 			return f.IO.Emptyln("No balances found.")
 		}
+		cols := []output.Column{}
+		if !currencyFiltered {
+			cols = append(cols, output.LCol("Asset"))
+		}
+		cols = append(cols,
+			output.RCol("Available"), output.RCol("Frozen"), output.RCol("Margin"),
+			output.RCol("Total"), output.RCol("uPnL"), output.RCol("Bonus"),
+			output.RCol("Transferable"),
+		)
 		rows := make([][]string, 0, len(resp))
 		for _, b := range resp {
-			rows = append(rows, []string{b.Asset, b.Available, b.Frozen, b.Margin, b.BalanceTotal, b.ProfitUnreal, b.Transfer})
+			row := []string{}
+			if !currencyFiltered {
+				row = append(row, b.Asset)
+			}
+			row = append(row,
+				b.Available, b.Frozen, b.Margin, b.BalanceTotal,
+				b.ProfitUnreal, b.Bonus, b.Transfer,
+			)
+			rows = append(rows, row)
 		}
-		return f.IO.Table([]output.Column{
-			output.LCol("Asset"),
-			output.RCol("Available"), output.RCol("Frozen"), output.RCol("Margin"),
-			output.RCol("Total"), output.RCol("uPnL"), output.RCol("Transferable"),
-		}, rows)
+		return f.IO.Table(cols, rows)
 	})
 }

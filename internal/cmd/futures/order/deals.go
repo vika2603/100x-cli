@@ -78,21 +78,33 @@ func runDeals(ctx context.Context, opts *DealsOptions) error {
 	if records == nil {
 		records = []futures.OrderDealItem{}
 	}
+	symbolFiltered := opts.Symbol != ""
 	return f.IO.Render(records, func() error {
 		if len(records) == 0 {
 			return f.IO.Emptyln("No fills found.")
 		}
-		rows := make([][]string, 0, len(records))
-		for _, d := range records {
-			rows = append(rows, []string{
-				strconv.Itoa(d.TradeID), d.Market, format.Side(f.IO, d.Side),
-				d.Volume, d.Price, d.DealFee, d.DealProfit, format.UnixSecondsFloat(float64(d.Time)),
-			})
+		cols := []output.Column{output.LCol("Trade ID"), output.LCol("Order ID")}
+		if !symbolFiltered {
+			cols = append(cols, output.LCol("Symbol"))
 		}
-		return f.IO.Table([]output.Column{
-			output.LCol("Trade ID"), output.LCol("Symbol"), output.LCol("Side"),
+		cols = append(cols,
+			output.LCol("Side"),
 			output.RCol("Size"), output.RCol("Price"), output.RCol("Fee"), output.RCol("PnL"),
 			output.LCol("Time"),
-		}, rows)
+		)
+		rows := make([][]string, 0, len(records))
+		for _, d := range records {
+			row := []string{strconv.Itoa(d.TradeID), strconv.Itoa(d.OrderID)}
+			if !symbolFiltered {
+				row = append(row, d.Market)
+			}
+			row = append(row,
+				format.Side(f.IO, d.Side),
+				d.Volume, d.Price, d.DealFee, d.DealProfit,
+				format.UnixSecondsFloat(float64(d.Time)),
+			)
+			rows = append(rows, row)
+		}
+		return f.IO.Table(cols, rows)
 	})
 }
