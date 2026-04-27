@@ -21,7 +21,9 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 		Short: "List the latest public trades",
 		Long: "List the latest public trades for one symbol.\n\n" +
 			"This is market-wide trade flow, not your private fills. Use `order deals` when you want\n" +
-			"your account's fill history instead of the public tape.",
+			"your account's fill history instead of the public tape.\n\n" +
+			"The gateway caps responses at 50 trades; --limit values higher than that have no\n" +
+			"additional effect.",
 		Example: "# Show the latest public trades for BTCUSDT\n" +
 			"  100x futures market deals BTCUSDT\n\n" +
 			"# Show the latest 50 public trades for BTCUSDT\n" +
@@ -46,7 +48,7 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			return f.IO.Render(resp, func() error { return printMarketDeals(f.IO, resp) })
 		},
 	}
-	c.Flags().IntVar(&limit, "limit", 20, "recent trades to show")
+	c.Flags().IntVar(&limit, "limit", 20, "recent trades to show (server caps at 50)")
 	return c
 }
 
@@ -64,5 +66,9 @@ func printMarketDeals(io *output.Renderer, rows []futures.MarketDealItem) error 
 			format.UnixMillis(d.Time),
 		})
 	}
-	return io.Table([]string{"Trade ID", "Side", "Price", "Size", "Time"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Trade ID"), output.LCol("Side"),
+		output.RCol("Price"), output.RCol("Size"),
+		output.LCol("Time"),
+	}, out)
 }

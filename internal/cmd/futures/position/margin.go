@@ -72,6 +72,14 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 		return clierr.Usagef("--position-id is only valid in read mode")
 	}
 
+	pref, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
+	if err != nil {
+		return err
+	}
+	if pref.PositionType == futures.PositionTypeCross {
+		return clierr.Usagef("position margin adjust requires ISOLATED mode; %s is in CROSS", opts.Symbol)
+	}
+
 	action, amount := futures.MarginActionAdd, opts.Add
 	if opts.Reduce != "" {
 		action, amount = futures.MarginActionRemove, opts.Reduce

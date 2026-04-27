@@ -26,7 +26,9 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 		Short: "Show the order-book snapshot",
 		Long: "Show the current order-book snapshot for one symbol.\n\n" +
 			"Use --limit to control how many bid and ask levels are shown. Use --tick-size to request\n" +
-			"merged book levels when you want a less granular view of the market depth.",
+			"merged book levels when you want a less granular view of the market depth.\n\n" +
+			"The gateway caps responses at 50 levels per side; --limit values higher than that have no\n" +
+			"additional effect, and a less liquid market may return fewer levels regardless of --limit.",
 		Example: "# Show the current order book for BTCUSDT\n" +
 			"  100x futures market depth BTCUSDT\n\n" +
 			"# Merge levels by tick size 0.1 and show 20 bids and 20 asks\n" +
@@ -47,7 +49,7 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.TickSize, "tick-size", "", "merge book levels by this tick size")
-	c.Flags().IntVar(&opts.Limit, "limit", 10, "levels to show on each side")
+	c.Flags().IntVar(&opts.Limit, "limit", 10, "levels to show on each side (server caps at 50)")
 	return c
 }
 
@@ -67,5 +69,7 @@ func printDepth(io *output.Renderer, d *futures.MarketDepthResp) error {
 	for _, bid := range d.Bids {
 		rows = append(rows, []string{"BID", bid.Price, bid.Volume})
 	}
-	return io.Table([]string{"Side", "Price", "Size"}, rows)
+	return io.Table([]output.Column{
+		output.LCol("Side"), output.RCol("Price"), output.RCol("Size"),
+	}, rows)
 }

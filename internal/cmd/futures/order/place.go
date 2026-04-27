@@ -134,6 +134,9 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	}
 	isStop := opts.SL != "" || opts.TP != ""
 	f := opts.Factory
+	if opts.Type == "market" && opts.Price != "" {
+		return clierr.Usagef("--price is not allowed for market orders")
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" {

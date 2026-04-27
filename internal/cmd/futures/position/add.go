@@ -64,6 +64,9 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 	if err := clierr.PositiveNumber("--price", opts.Price); err != nil {
 		return err
 	}
+	if opts.Type == "market" && opts.Price != "" {
+		return clierr.Usagef("--price is not allowed for market position add")
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" {

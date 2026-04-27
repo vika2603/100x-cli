@@ -70,6 +70,9 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
 		return err
 	}
+	if opts.Type == "market" && opts.Price != "" {
+		return clierr.Usagef("--price is not allowed for market position close")
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" || opts.Size == "" {
