@@ -10,12 +10,40 @@ REPO="vika2603/100x-cli"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="latest"
 
+# ----- styling -------------------------------------------------------------
+if [ -t 1 ] && [ -z "${NO_COLOR-}" ] && [ "${TERM-}" != "dumb" ]; then
+	BOLD="$(printf '\033[1m')"
+	DIM="$(printf '\033[2m')"
+	RED="$(printf '\033[31m')"
+	GREEN="$(printf '\033[32m')"
+	YELLOW="$(printf '\033[33m')"
+	CYAN="$(printf '\033[36m')"
+	RESET="$(printf '\033[0m')"
+else
+	BOLD=""
+	DIM=""
+	RED=""
+	GREEN=""
+	YELLOW=""
+	CYAN=""
+	RESET=""
+fi
+
+step() { printf '%s==>%s %s\n' "$CYAN" "$RESET" "$1"; }
+success() { printf '%s✓%s  %s\n' "$GREEN" "$RESET" "$1"; }
+warn() { printf '%s!%s  %s\n' "$YELLOW" "$RESET" "$1"; }
+fail() {
+	printf '%s✗%s  %s\n' "$RED" "$RESET" "$1" >&2
+	exit 1
+}
+
+# ----- args ----------------------------------------------------------------
 usage() {
 	cat <<EOF
-Usage: install.sh [--version vX.Y.Z] [--to <dir>]
+${BOLD}Usage:${RESET} install.sh [--version vX.Y.Z] [--to <dir>]
 
-  --version  Release tag to install (default: latest)
-  --to       Install directory (default: \$HOME/.local/bin)
+  ${BOLD}--version${RESET}  Release tag to install (default: latest)
+  ${BOLD}--to${RESET}       Install directory (default: \$HOME/.local/bin)
 EOF
 }
 
@@ -34,38 +62,33 @@ while [ $# -gt 0 ]; do
 		exit 0
 		;;
 	*)
-		echo "unknown arg: $1" >&2
-		usage >&2
-		exit 2
+		fail "unknown arg: $1"
 		;;
 	esac
 done
 
+# ----- platform ------------------------------------------------------------
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 case "$OS" in
 linux | darwin) ;;
 *)
-	echo "unsupported OS: $OS (use 'go install github.com/$REPO/cmd/100x@latest' or download from https://github.com/$REPO/releases)" >&2
-	exit 1
+	fail "unsupported OS: $OS  (use 'go install github.com/$REPO/cmd/100x@latest' or grab a binary from https://github.com/$REPO/releases)"
 	;;
 esac
 case "$ARCH" in
 x86_64 | amd64) ARCH="amd64" ;;
 aarch64 | arm64) ARCH="arm64" ;;
-*)
-	echo "unsupported arch: $ARCH" >&2
-	exit 1
-	;;
+*) fail "unsupported arch: $ARCH" ;;
 esac
 
+# ----- tooling -------------------------------------------------------------
 if command -v curl >/dev/null 2>&1; then
 	fetch() { curl -fsSL "$1" -o "$2"; }
 elif command -v wget >/dev/null 2>&1; then
 	fetch() { wget -q "$1" -O "$2"; }
 else
-	echo "need curl or wget on PATH" >&2
-	exit 1
+	fail "need curl or wget on PATH"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then
@@ -73,9 +96,14 @@ if command -v sha256sum >/dev/null 2>&1; then
 elif command -v shasum >/dev/null 2>&1; then
 	sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 else
-	echo "need sha256sum or shasum on PATH" >&2
-	exit 1
+	fail "need sha256sum or shasum on PATH"
 fi
+
+# ----- banner --------------------------------------------------------------
+printf '\n'
+printf '  %s100x-cli installer%s\n' "$BOLD" "$RESET"
+printf '  %shttps://github.com/%s%s\n' "$DIM" "$REPO" "$RESET"
+printf '\n'
 
 if [ "$VERSION" = "latest" ]; then
 	BASE="https://github.com/$REPO/releases/latest/download"
@@ -86,35 +114,53 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "fetching checksums.txt"
+# ----- fetch checksums -----------------------------------------------------
+step "Resolving release"
 fetch "$BASE/checksums.txt" "$TMP/checksums.txt"
 
 ASSET="$(awk -v suffix="_${OS}_${ARCH}.tar.gz" 'index($2, suffix) {print $2; exit}' "$TMP/checksums.txt")"
 EXPECTED="$(awk -v suffix="_${OS}_${ARCH}.tar.gz" 'index($2, suffix) {print $1; exit}' "$TMP/checksums.txt")"
 if [ -z "$ASSET" ]; then
-	echo "no asset matching ${OS}/${ARCH} in checksums.txt" >&2
-	exit 1
+	fail "no asset matching ${OS}/${ARCH} in checksums.txt"
 fi
 
-echo "downloading $ASSET"
+# Derive the resolved tag from the asset name (matches goreleaser's pattern
+# `<project>_<version>_<os>_<arch>.tar.gz`). Falls back to VERSION literal.
+RESOLVED="$(printf '%s' "$ASSET" | sed -E 's/^[^_]+_(.+)_[^_]+_[^_]+\.tar\.gz$/\1/')"
+[ -n "$RESOLVED" ] || RESOLVED="$VERSION"
+
+# ----- download ------------------------------------------------------------
+step "Downloading ${BOLD}${ASSET}${RESET}"
 fetch "$BASE/$ASSET" "$TMP/$ASSET"
 
 GOT="$(sha "$TMP/$ASSET")"
 if [ "$GOT" != "$EXPECTED" ]; then
-	echo "checksum mismatch for $ASSET" >&2
-	echo "  expected: $EXPECTED" >&2
-	echo "  got:      $GOT" >&2
-	exit 1
+	fail "checksum mismatch for $ASSET
+      expected: $EXPECTED
+      got:      $GOT"
 fi
+success "Checksum verified  ${DIM}${EXPECTED}${RESET}"
 
-echo "extracting"
+# ----- extract & install ---------------------------------------------------
+step "Extracting"
 tar -xzf "$TMP/$ASSET" -C "$TMP" 100x
 
+step "Installing to ${BOLD}${INSTALL_DIR}${RESET}"
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "$TMP/100x" "$INSTALL_DIR/100x"
 
-echo "installed $INSTALL_DIR/100x"
+# ----- summary -------------------------------------------------------------
+printf '\n'
+success "${BOLD}100x ${RESOLVED}${RESET} installed at ${BOLD}${INSTALL_DIR}/100x${RESET}"
 case ":$PATH:" in
 *":$INSTALL_DIR:"*) ;;
-*) echo "note: $INSTALL_DIR is not on PATH" ;;
+*)
+	warn "${INSTALL_DIR} is not on PATH"
+	printf '   Add this to your shell profile:\n'
+	printf '     %sexport PATH="%s:$PATH"%s\n' "$DIM" "$INSTALL_DIR" "$RESET"
+	;;
 esac
+printf '\n'
+printf '  Try it:    %s100x --help%s\n' "$BOLD" "$RESET"
+printf '  Add creds: %s100x profile add <name>%s\n' "$BOLD" "$RESET"
+printf '\n'
