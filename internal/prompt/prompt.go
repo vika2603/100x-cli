@@ -20,8 +20,9 @@ import (
 var ErrNoTTY = errors.New("interactive prompt requires a tty (pass -y or --secret)")
 
 // ErrDestructiveNoTTY is returned by ConfirmDestructive when the caller
-// is in non-tty mode and -y was not passed. cmd/100x maps it to exit 73.
-var ErrDestructiveNoTTY = errors.New("destructive op refused: non-tty without -y")
+// is in non-tty mode and -y was not passed. cmd/100x maps it to the
+// Aborted exit code.
+var ErrDestructiveNoTTY = errors.New("this command needs confirmation; pass --yes to skip the prompt in non-interactive mode")
 
 // ConfirmDestructive implements the four-quadrant tty/-y matrix for
 // high-risk operations (bulk cancel, profile remove, …). Pass yes=true

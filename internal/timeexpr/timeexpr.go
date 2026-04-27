@@ -27,18 +27,32 @@ func Parse(value, name string) (int, error) {
 // ResolveRange parses a since/until pair against one shared `now`.
 // When --since is set and --until is omitted, until defaults to the current
 // time so relative windows like `--since now-24h` are ergonomic.
+//
+// Locally rejects two obviously-bad inputs that would otherwise round-trip
+// to the gateway and come back as opaque API errors: --since strictly in
+// the future, and --since at or after --until.
 func ResolveRange(since, until string) (int, int, error) {
 	now := time.Now()
+	nowSec := int(now.Unix())
 	start, err := parseAt(since, "since", now)
 	if err != nil {
 		return 0, 0, err
 	}
 	if strings.TrimSpace(until) == "" && strings.TrimSpace(since) != "" {
-		return start, int(now.Unix()), nil
+		if start > nowSec {
+			return 0, 0, fmt.Errorf("--since %q is in the future", since)
+		}
+		return start, nowSec, nil
 	}
 	end, err := parseAt(until, "until", now)
 	if err != nil {
 		return 0, 0, err
+	}
+	if start != 0 && start > nowSec {
+		return 0, 0, fmt.Errorf("--since %q is in the future", since)
+	}
+	if start != 0 && end != 0 && start >= end {
+		return 0, 0, fmt.Errorf("--since %q must be earlier than --until %q", since, until)
 	}
 	return start, end, nil
 }

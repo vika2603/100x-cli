@@ -92,7 +92,7 @@ func fillAddInputs(opts *AddOptions) error {
 	if opts.Secret == "" {
 		opts.Secret, err = prompt.Secret("API secret")
 		if errors.Is(err, prompt.ErrNoTTY) {
-			return errors.New("profile add: --secret is required in non-interactive mode")
+			return errors.New("profile add: --secret is required when stdin is not a terminal")
 		}
 		if err != nil {
 			return err
