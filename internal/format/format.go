@@ -5,6 +5,7 @@
 package format
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -120,4 +121,20 @@ func UnixSecondsFloat(sec float64) string {
 		return "-"
 	}
 	return time.Unix(int64(sec), 0).Local().Format("2006-01-02 15:04:05")
+}
+
+// Percent renders a string-encoded ratio (e.g. "0.0233") as a signed
+// percentage with two decimals (e.g. "+2.33%"). Returns "-" for empty / "-"
+// inputs and returns the raw value unchanged when it is not parseable as a
+// float so we never hide unexpected gateway shapes.
+func Percent(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "-" {
+		return "-"
+	}
+	n, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return s
+	}
+	return fmt.Sprintf("%+.2f%%", n*100)
 }

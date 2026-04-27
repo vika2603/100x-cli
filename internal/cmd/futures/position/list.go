@@ -122,10 +122,16 @@ func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error 
 	for _, p := range rows {
 		out = append(out, []string{
 			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
-			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal, p.Roe,
+			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal, format.Percent(p.Roe),
+			format.UnixMillis(p.CreateTime),
 		})
 	}
-	return io.Table([]string{"Position ID", "Symbol", "Side", "Size", "Entry", "Liq Price", "Margin", "uPnL", "ROE"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Position ID"), output.LCol("Symbol"), output.LCol("Side"),
+		output.RCol("Size"), output.RCol("Entry"), output.RCol("Liq Price"),
+		output.RCol("Margin"), output.RCol("uPnL"), output.RCol("ROE"),
+		output.LCol("Opened"),
+	}, out)
 }
 
 func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) error {
@@ -136,8 +142,14 @@ func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) err
 	for _, p := range rows {
 		out = append(out, []string{
 			strconv.Itoa(p.PositionID), p.Market, format.Side(io, p.Side),
-			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal, p.Roe,
+			p.OpenPrice, p.ClosePrice, p.VolumeMax, p.ProfitReal, format.Percent(p.Roe),
+			format.UnixMillis(p.UpdateTime),
 		})
 	}
-	return io.Table([]string{"Position ID", "Symbol", "Side", "Open", "Close", "Size", "PnL", "ROE"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Position ID"), output.LCol("Symbol"), output.LCol("Side"),
+		output.RCol("Open"), output.RCol("Close"), output.RCol("Size"),
+		output.RCol("PnL"), output.RCol("ROE"),
+		output.LCol("Closed"),
+	}, out)
 }

@@ -2,13 +2,14 @@ package market
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -69,14 +70,14 @@ func printMarketState(io *output.Renderer, s futures.MarketStateItem) error {
 	return io.Object([]output.KV{
 		{Key: "Symbol", Value: s.Market},
 		{Key: "Last", Value: s.Last},
-		{Key: "Change", Value: s.Change},
+		{Key: "Change", Value: format.Percent(s.Change)},
 		{Key: "High", Value: s.High},
 		{Key: "Low", Value: s.Low},
 		{Key: "Volume", Value: s.Volume},
 		{Key: "Index", Value: s.IndexPrice},
 		{Key: "Mark", Value: s.SignPrice},
-		{Key: "Funding Next", Value: s.FundingRateNext},
-		{Key: "Funding Time", Value: strconv.FormatInt(s.FundingTime, 10)},
+		{Key: "Funding Next", Value: format.Percent(s.FundingRateNext)},
+		{Key: "Funding Time", Value: fmt.Sprintf("%ds", s.FundingTime)},
 	})
 }
 
@@ -86,12 +87,16 @@ func printMarketStates(io *output.Renderer, rows []futures.MarketStateItem) erro
 		out = append(out, []string{
 			s.Market,
 			s.Last,
-			s.Change,
+			format.Percent(s.Change),
 			s.Volume,
 			s.IndexPrice,
 			s.SignPrice,
-			s.FundingRateNext,
+			format.Percent(s.FundingRateNext),
 		})
 	}
-	return io.Table([]string{"Symbol", "Last", "Change", "Volume", "Index", "Mark", "Funding Next"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Symbol"),
+		output.RCol("Last"), output.RCol("Change"), output.RCol("Volume"),
+		output.RCol("Index"), output.RCol("Mark"), output.RCol("Funding Next"),
+	}, out)
 }
