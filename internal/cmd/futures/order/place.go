@@ -159,7 +159,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Symbol", Value: opts.Symbol},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			})
 		})
@@ -179,7 +179,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return f.IO.Render(resp, func() error {
 			return f.IO.Object([]output.KV{
 				{Key: "ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-				{Key: "Symbol", Value: opts.Symbol},
+				{Key: "Symbol", Value: resp.Market},
 				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			})
 		})

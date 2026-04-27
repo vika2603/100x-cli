@@ -106,9 +106,12 @@ func renderMargin(ctx context.Context, f *factory.Factory, market, positionID st
 		return err
 	}
 	return f.IO.Render(resp, func() error {
+		// PositionAdjustableMarginResp has no market field; user already
+		// passed the symbol on the command line, so omit it here rather
+		// than echoing whatever client-side string we happened to send.
 		return f.IO.Object([]output.KV{
-			{Key: "Symbol", Value: market},
-			{Key: "Leverage", Value: resp.Leverage},
+			{Key: "Position ID", Value: resolved},
+			{Key: "Leverage", Value: resp.Leverage + "x"},
 			{Key: "Amount", Value: resp.Amount},
 			{Key: "Margin Amount", Value: resp.MarginAmount},
 			{Key: "Available", Value: resp.Available},

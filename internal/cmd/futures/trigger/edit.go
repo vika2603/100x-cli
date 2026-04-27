@@ -92,9 +92,10 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return err
 	}
 	return f.IO.Render(resp, func() error {
+		// StopOrderEditResp only carries the trigger id; user supplied the
+		// symbol on the command line, so don't echo a client-derived value.
 		return f.IO.Object([]output.KV{
 			{Key: "Trigger ID", Value: strconv.FormatInt(resp.OrderID, 10)},
-			{Key: "Symbol", Value: opts.Symbol},
 			{Key: "Trigger Price", Value: opts.TriggerPrice},
 			{Key: "Trigger By", Value: format.Enum(opts.TriggerBy)},
 		})
