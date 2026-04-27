@@ -279,6 +279,20 @@ func configureUsageErrors(cmd *cobra.Command) {
 			return nil
 		}
 	}
+	// Cobra's built-in `required flag(s) ... not set` check runs after Args
+	// and before RunE, and its error never flows through SetFlagErrorFunc.
+	// Pre-empt it in PreRunE so we can attach the correct subcommand path
+	// instead of the generic root help hint.
+	prevPreRunE := cmd.PreRunE
+	cmd.PreRunE = func(c *cobra.Command, a []string) error {
+		if err := c.ValidateRequiredFlags(); err != nil {
+			return clierr.Usage(clierr.WithHelpHint(err, c.CommandPath()))
+		}
+		if prevPreRunE != nil {
+			return prevPreRunE(c, a)
+		}
+		return nil
+	}
 	if cmd.RunE != nil {
 		runE := cmd.RunE
 		cmd.RunE = func(c *cobra.Command, a []string) error {

@@ -8,21 +8,34 @@ func NoFiles(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirecti
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
-// BalanceEventTypes completes balance history business types.
+// BalanceEventTypes completes balance history business types. The gateway
+// accepts more values than this; the list covers the common ones surfaced
+// in --help.
 func BalanceEventTypes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return values("deposit", "withdraw", "faucet")
+	return values("deposit", "withdraw", "faucet", "fee", "trade")
+}
+
+// KlineIntervalAliases is the canonical short-form interval set advertised
+// in error messages and help text.
+var KlineIntervalAliases = []string{
+	"1m", "5m", "10m", "15m", "30m",
+	"1h", "2h", "4h", "6h", "12h",
+	"1d", "1w", "1M",
+}
+
+// KlineIntervalNatives is the gateway-native form of each alias. parseInterval
+// pass-through accepts these too, but they are not the canonical CLI form.
+var KlineIntervalNatives = []string{
+	"1min", "5min", "10min", "15min", "30min",
+	"1hour", "2hour", "4hour", "6hour", "12hour",
+	"1day", "1week", "1month",
 }
 
 // KlineIntervals completes supported market kline intervals.
 func KlineIntervals(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return values(
-		"1m", "5m", "10m", "15m", "30m",
-		"1h", "2h", "4h", "6h", "12h",
-		"1d", "1w", "1M",
-		"1min", "5min", "10min", "15min", "30min",
-		"1hour", "2hour", "4hour", "6hour", "12hour",
-		"1day", "1week", "1month",
-	)
+	all := append([]string{}, KlineIntervalAliases...)
+	all = append(all, KlineIntervalNatives...)
+	return values(all...)
 }
 
 // MarginModes completes supported position margin modes.

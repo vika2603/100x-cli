@@ -295,3 +295,22 @@ func TestUnknownCommandSuggestion(t *testing.T) {
 		t.Fatalf("stderr=%q", stderr)
 	}
 }
+
+// TestRequiredFlagPointsToSubcommand checks the help-hint regression: cobra's
+// `required flag(s) ... not set` error must direct the user to the
+// subcommand's --help, not the root --help.
+func TestRequiredFlagPointsToSubcommand(t *testing.T) {
+	_, stderr, err := executeRoot(t, "futures", "order", "place", "BTCUSDT")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(stderr, "required flag(s)") {
+		t.Fatalf("stderr=%q want required-flag error", stderr)
+	}
+	if !strings.Contains(stderr, "100x futures order place --help") {
+		t.Fatalf("stderr=%q want subcommand help hint", stderr)
+	}
+	if strings.Contains(stderr, "Run `100x --help`") {
+		t.Fatalf("stderr=%q must not point to root help", stderr)
+	}
+}

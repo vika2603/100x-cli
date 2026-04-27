@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -45,7 +46,7 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 			return runKline(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval, for example 1m or 5m")
+	c.Flags().StringVar(&opts.Interval, "interval", "1m", "candle interval ("+strings.Join(complete.KlineIntervalAliases, ", ")+")")
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
 	c.Flags().IntVar(&opts.Limit, "limit", 20, "latest candles to show")
@@ -114,7 +115,7 @@ func parseInterval(s string) (string, error) {
 		"1day", "1week", "1month":
 		return s, nil
 	default:
-		return "", clierr.Usagef("unknown --interval %q", s)
+		return "", clierr.Usagef("unknown --interval %q (want %s)", s, strings.Join(complete.KlineIntervalAliases, ", "))
 	}
 }
 
@@ -133,5 +134,9 @@ func printKlines(io *output.Renderer, rows []futures.MarketKlineItem) error {
 			k.Volume,
 		})
 	}
-	return io.Table([]string{"Time", "Open", "High", "Low", "Close", "Volume"}, out)
+	return io.Table([]output.Column{
+		output.LCol("Time"),
+		output.RCol("Open"), output.RCol("High"), output.RCol("Low"),
+		output.RCol("Close"), output.RCol("Volume"),
+	}, out)
 }

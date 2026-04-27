@@ -11,6 +11,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
+	"github.com/vika2603/100x-cli/internal/output"
 )
 
 // HistoryOptions captures the flag-bound state of `balance history`.
@@ -30,7 +31,8 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 		Short: "List asset-change history",
 		Long: "List asset-change history for the current account.\n\n" +
 			"Results are paginated. Use --currency to narrow to one asset and --type to filter by\n" +
-			"business type such as deposit, withdraw, or faucet.",
+			"business type such as deposit, withdraw, faucet, fee, or trade. The gateway accepts\n" +
+			"more values than this list; an unknown --type returns no rows rather than an error.",
 		Example: "# Show recent USDT balance history with 20 items per page\n" +
 			"  100x futures balance history --currency USDT --page-size 20\n\n" +
 			"# Show only faucet records in USDT balance history\n" +
@@ -42,7 +44,7 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset (for example USDT)")
-	c.Flags().StringVar(&opts.Type, "type", "", "business type: deposit | withdraw | faucet")
+	c.Flags().StringVar(&opts.Type, "type", "", "business type, for example deposit | withdraw | faucet | fee | trade")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
 	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
@@ -76,6 +78,9 @@ func runHistory(ctx context.Context, opts *HistoryOptions) error {
 		for _, r := range records {
 			rows = append(rows, []string{format.UnixMillis(r.Time), r.Asset, format.Enum(r.Business), r.Change})
 		}
-		return f.IO.Table([]string{"Time", "Asset", "Business", "Change"}, rows)
+		return f.IO.Table([]output.Column{
+			output.LCol("Time"), output.LCol("Asset"), output.LCol("Business"),
+			output.RCol("Change"),
+		}, rows)
 	})
 }
