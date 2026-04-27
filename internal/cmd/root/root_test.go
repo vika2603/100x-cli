@@ -9,8 +9,11 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/zalando/go-keyring"
 
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/config"
+	"github.com/vika2603/100x-cli/internal/credential"
 	"github.com/vika2603/100x-cli/internal/exit"
 )
 
@@ -298,8 +301,24 @@ func TestUnknownCommandSuggestion(t *testing.T) {
 
 // TestRequiredFlagPointsToSubcommand checks the help-hint regression: cobra's
 // `required flag(s) ... not set` error must direct the user to the
-// subcommand's --help, not the root --help.
+// subcommand's --help, not the root --help. The command path under test is
+// AuthPrivate, so install a fake profile + keychain credential up front so
+// the persistent-prerun gate does not pre-empt the required-flag check.
 func TestRequiredFlagPointsToSubcommand(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("E100X_ENDPOINT", "https://test.invalid")
+	t.Setenv("E100X_PROFILE", "")
+	keyring.MockInit()
+	if err := config.Save(&config.Config{
+		Default:  "test",
+		Profiles: map[string]config.Profile{"test": {ClientID: "id-test"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := credential.Default().Save("test", "secret-test"); err != nil {
+		t.Fatal(err)
+	}
+
 	_, stderr, err := executeRoot(t, "futures", "order", "place", "BTCUSDT")
 	if err == nil {
 		t.Fatal("expected error")

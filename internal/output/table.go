@@ -13,8 +13,11 @@ import (
 // Align controls the horizontal alignment of a column's cells.
 type Align int
 
+// Align values.
 const (
+	// AlignLeft left-aligns column cells. Use for identifiers, names, and free-form text.
 	AlignLeft Align = iota
+	// AlignRight right-aligns column cells. Use for numeric values so decimal points line up.
 	AlignRight
 )
 
