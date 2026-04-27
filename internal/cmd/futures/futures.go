@@ -38,30 +38,22 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	)
 	orderCmd := order.NewCmdOrder(f)
 	orderCmd.GroupID = "trade"
-	ordersCmd := order.NewCmdOrders(f)
-	ordersCmd.GroupID = "trade"
 	triggerCmd := trigger.NewCmdTrigger(f)
 	triggerCmd.GroupID = "trade"
-	triggersCmd := trigger.NewCmdTriggers(f)
-	triggersCmd.GroupID = "trade"
 	positionCmd := position.NewCmdPosition(f)
 	positionCmd.GroupID = "trade"
-	positionsCmd := position.NewCmdPositions(f)
-	positionsCmd.GroupID = "trade"
 	preferenceCmd := position.NewCmdPreference(f)
 	preferenceCmd.GroupID = "trade"
 	balanceCmd := balance.NewCmdBalance(f)
 	balanceCmd.GroupID = "account"
-	balancesCmd := balance.NewCmdBalances(f)
-	balancesCmd.GroupID = "account"
 	marketCmd := market.NewCmdMarket(f)
 	marketCmd.GroupID = "market"
 	c.AddCommand(
-		orderCmd, ordersCmd,
-		triggerCmd, triggersCmd,
-		positionCmd, positionsCmd,
+		orderCmd,
+		triggerCmd,
+		positionCmd,
 		preferenceCmd,
-		balanceCmd, balancesCmd,
+		balanceCmd,
 		marketCmd,
 	)
 	// Default for the futures subtree: signed private client. The market

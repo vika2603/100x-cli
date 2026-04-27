@@ -117,37 +117,14 @@ func TestVersionFlagIsNotSupported(t *testing.T) {
 	}
 }
 
-func TestSelectedPluralListShortcuts(t *testing.T) {
+func TestPluralVerbsAreNotAccepted(t *testing.T) {
 	for _, args := range [][]string{
-		{"f", "orders", "--help"},
-		{"f", "positions", "--help"},
-		{"f", "triggers", "--help"},
-		{"f", "balances", "--help"},
-	} {
-		stdout, stderr, err := executeRoot(t, args...)
-		if err != nil {
-			t.Fatalf("%q: %v", strings.Join(args, " "), err)
-		}
-		if stderr != "" {
-			t.Fatalf("%q stderr=%q", strings.Join(args, " "), stderr)
-		}
-		if !strings.Contains(stdout, "Shortcut for `100x futures") {
-			t.Fatalf("%q stdout=%q", strings.Join(args, " "), stdout)
-		}
-	}
-}
-
-func TestLongPluralShortcutsStayScoped(t *testing.T) {
-	_, stderr, err := executeRoot(t, "orders")
-	if err == nil {
-		t.Fatal("expected top-level orders to stay unsupported")
-	}
-	if !strings.Contains(stderr, `unknown command "orders" for "100x"`) {
-		t.Fatalf("stderr=%q", stderr)
-	}
-
-	for _, args := range [][]string{
+		{"orders"},
 		{"profiles"},
+		{"f", "orders"},
+		{"f", "positions"},
+		{"f", "triggers"},
+		{"f", "balances"},
 		{"f", "markets"},
 	} {
 		_, _, err := executeRoot(t, args...)

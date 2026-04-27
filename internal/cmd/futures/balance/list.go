@@ -44,26 +44,6 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 	return c
 }
 
-// NewCmdBalances builds the `futures balances` shortcut for `futures balance list`.
-func NewCmdBalances(f *factory.Factory) *cobra.Command {
-	opts := &ListOptions{Factory: f}
-	c := &cobra.Command{
-		Use:   "balances",
-		Short: "Show the current wallet snapshot",
-		Long:  "Shortcut for `100x futures balance list`.",
-		Example: "# Show balances for every asset in the wallet\n" +
-			"  100x futures balances\n\n" +
-			"# Filter the wallet snapshot down to USDT only\n" +
-			"  100x futures balances --currency USDT",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runList(cmd.Context(), opts)
-		},
-	}
-	c.Flags().StringVar(&opts.Currency, "currency", "", "Only show this asset, for example USDT")
-	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
-	return c
-}
-
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
 	resp, err := f.Client.Asset.AssetQuery(ctx, futures.AssetQueryReq{})

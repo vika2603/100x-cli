@@ -90,29 +90,6 @@ func TestRunListFinishedUsesFinishedHeader(t *testing.T) {
 	}
 }
 
-func TestCmdOrdersShortcutRunsList(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	doer := mocks.NewMockDoer(ctrl)
-	doer.EXPECT().
-		Get(gomock.Any(), "/open/api/v2/order/pending", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ string, in any, out any) error {
-			req := in.(futures.PendingOrderReq)
-			if req.Market != "BTCUSDT" {
-				t.Fatalf("market=%q", req.Market)
-			}
-			*out.(*futures.PendingOrderResp) = futures.PendingOrderResp{Records: nil}
-			return nil
-		})
-	cmd := NewCmdOrders(&factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: &bytes.Buffer{}, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	})
-	cmd.SetArgs([]string{"--symbol", "BTCUSDT"})
-	if err := cmd.Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestRunListRejectsBadPageSizeBeforeClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	opts := &ListOptions{Page: 1, PageSize: 0, Factory: &factory.Factory{

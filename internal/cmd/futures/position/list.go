@@ -45,26 +45,6 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	return c
 }
 
-// NewCmdPositions builds the `futures positions` shortcut for `futures position list`.
-func NewCmdPositions(f *factory.Factory) *cobra.Command {
-	opts := &ListOptions{Factory: f}
-	c := &cobra.Command{
-		Use:   "positions",
-		Short: "List open positions",
-		Long:  "Shortcut for `100x futures position list`.",
-		Example: "# List every open position in the account\n" +
-			"  100x futures positions\n\n" +
-			"# List open positions for BTCUSDT only\n" +
-			"  100x futures positions --symbol BTCUSDT",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runList(cmd.Context(), opts)
-		},
-	}
-	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show positions for this symbol")
-	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
-	return c
-}
-
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
 	resp, err := f.Client.Position.PendingPosition(ctx, futures.PendingPositionReq{Market: opts.Symbol})

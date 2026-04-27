@@ -50,26 +50,6 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	return c
 }
 
-// NewCmdOrders builds the `futures orders` shortcut for `futures order list`.
-func NewCmdOrders(f *factory.Factory) *cobra.Command {
-	opts := &ListOptions{Factory: f}
-	c := &cobra.Command{
-		Use:   "orders",
-		Short: "List open or finished orders",
-		Long: "Shortcut for `100x futures order list`.\n\n" +
-			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
-		Example: "# List open orders for BTCUSDT only\n" +
-			"  100x futures orders --symbol BTCUSDT\n\n" +
-			"# List finished BTCUSDT orders from the last 24 hours with page size 50\n" +
-			"  100x futures orders --finished --symbol BTCUSDT --since now-24h --page-size 50",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runList(cmd.Context(), opts)
-		},
-	}
-	addListFlags(c, opts)
-	return c
-}
-
 func addListFlags(c *cobra.Command, opts *ListOptions) {
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Only show orders for this symbol")
 	c.Flags().BoolVar(&opts.Finished, "finished", false, "Show finished orders instead of open orders")

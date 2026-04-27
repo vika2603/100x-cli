@@ -49,29 +49,6 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 	return c
 }
 
-// NewCmdTriggers builds the `futures triggers` shortcut for `futures trigger list`.
-func NewCmdTriggers(f *factory.Factory) *cobra.Command {
-	opts := &ListOptions{Factory: f}
-	c := &cobra.Command{
-		Use:   "triggers [symbol]",
-		Short: "List active or finished triggers",
-		Long:  "Shortcut for `100x futures trigger list`.",
-		Example: "# List active BTCUSDT triggers\n" +
-			"  100x futures triggers BTCUSDT\n\n" +
-			"# List finished BTCUSDT triggers with page size 50\n" +
-			"  100x futures triggers BTCUSDT --finished --page-size 50",
-		ValidArgsFunction: complete.SymbolArg,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				opts.Symbol = args[0]
-			}
-			return runList(cmd.Context(), opts)
-		},
-	}
-	addListFlags(c, opts)
-	return c
-}
-
 func addListFlags(c *cobra.Command, opts *ListOptions) {
 	c.Flags().BoolVar(&opts.Finished, "finished", false, "Show finished triggers instead of active triggers")
 	c.Flags().IntVar(&opts.Page, "page", 1, "Page number")
