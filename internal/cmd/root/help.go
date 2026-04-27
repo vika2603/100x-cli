@@ -194,26 +194,35 @@ func (s helpStyler) commandName(label string) string {
 	return s.render(styleCommandName, label)
 }
 
+// formatExamples renders the Example block with a 2-space indent. Comment
+// lines (`# ...`) get comment styling; command lines get a `$` prompt
+// prefix. Backslash line-continuations are honoured: a line ending in `\`
+// marks the next non-blank line as a continuation, which is aligned under
+// the command instead of receiving a fresh prompt.
 func (s helpStyler) formatExamples(raw string) string {
 	if raw == "" {
 		return ""
 	}
 	lines := strings.Split(strings.TrimRight(raw, "\n"), "\n")
 	out := make([]string, 0, len(lines))
+	inContinuation := false
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case trimmed == "":
-			continue
+			inContinuation = false
+			out = append(out, "")
 		case strings.HasPrefix(trimmed, "#"):
-			if len(out) > 0 {
-				out = append(out, "")
-			}
+			inContinuation = false
 			out = append(out, "  "+s.render(styleExampleComment, trimmed))
 		default:
-			trimmed = strings.TrimPrefix(trimmed, "$")
-			trimmed = strings.TrimSpace(trimmed)
-			out = append(out, "  "+s.render(stylePrompt, "$")+" "+trimmed)
+			if inContinuation {
+				out = append(out, "    "+trimmed)
+			} else {
+				body := strings.TrimSpace(strings.TrimPrefix(trimmed, "$"))
+				out = append(out, "  "+s.render(stylePrompt, "$")+" "+body)
+			}
+			inContinuation = strings.HasSuffix(trimmed, `\`)
 		}
 	}
 	return strings.Join(out, "\n")
