@@ -27,7 +27,7 @@ type DealsOptions struct {
 
 // NewCmdDeals builds the `order deals` cobra command.
 func NewCmdDeals(f *factory.Factory) *cobra.Command {
-	opts := &DealsOptions{Factory: f, Page: 1, PageSize: 100}
+	opts := &DealsOptions{Factory: f, Page: 1, PageSize: 20}
 	c := &cobra.Command{
 		Use:   "deals",
 		Short: "List trade-level fill records",

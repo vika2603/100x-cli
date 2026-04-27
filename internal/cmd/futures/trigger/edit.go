@@ -2,7 +2,9 @@ package trigger
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -10,7 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/protection"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -61,11 +63,25 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
 		return err
 	}
-	priceType, err := shared.ParsePriceType(opts.TriggerBy)
+	var priceType futures.StopTriggerType
+	switch strings.ToUpper(opts.TriggerBy) {
+	case "", "LAST":
+		priceType = futures.StopTriggerTypeLast
+	case "INDEX":
+		priceType = futures.StopTriggerTypeIndex
+	case "MARK":
+		priceType = futures.StopTriggerTypeMark
+	default:
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
+	}
+	f := opts.Factory
+	attached, err := protection.IsAttached(ctx, f.Client, opts.Symbol, opts.OrderID)
 	if err != nil {
 		return err
 	}
-	f := opts.Factory
+	if !attached {
+		return fmt.Errorf("trigger %s cannot be edited: it is either a standalone trigger or no longer pending. Standalone triggers must be cancelled and re-placed; run `100x futures trigger list` to see editable triggers", opts.OrderID)
+	}
 	resp, err := f.Client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
 		Market:        opts.Symbol,
 		StopOrderID:   opts.OrderID,

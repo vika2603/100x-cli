@@ -121,7 +121,7 @@ func completeOpenOrderIDs(cmd *cobra.Command, symbol, toComplete string) ([]stri
 	defer cancel()
 
 	resp, err := client.Order.PendingOrder(ctx, futures.PendingOrderReq{
-		Market: symbol, Page: 1, PageSize: 100,
+		Market: symbol, Page: 1, PageSize: 50,
 	})
 	if err != nil {
 		return noFiles()
@@ -159,7 +159,7 @@ func completeActiveTriggerIDs(cmd *cobra.Command, symbol, toComplete string) ([]
 	defer cancel()
 
 	resp, err := client.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{
-		Market: symbol, Page: 1, PageSize: 100,
+		Market: symbol, Page: 1, PageSize: 50,
 	})
 	if err != nil {
 		return noFiles()

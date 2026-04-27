@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/order/shared"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -88,21 +88,49 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			return err
 		}
 	}
-	side, err := shared.ParseSide(opts.Side)
-	if err != nil {
-		return err
+	var side futures.Side
+	switch strings.ToUpper(opts.Side) {
+	case "BUY", "B":
+		side = futures.SideBuy
+	case "SELL", "S":
+		side = futures.SideSell
+	default:
+		return clierr.Usagef("unknown side %q (want buy|sell)", opts.Side)
 	}
-	tif, err := shared.ParseTIF(opts.TIF)
-	if err != nil {
-		return err
+	var tif futures.TIF
+	switch strings.ToUpper(opts.TIF) {
+	case "", "GTC":
+		tif = futures.TIFGTC
+	case "FOK":
+		tif = futures.TIFFOK
+	case "IOC":
+		tif = futures.TIFIOC
+	case "POST_ONLY", "POSTONLY", "PO":
+		tif = futures.TIFPostOnly
+	default:
+		return clierr.Usagef("unknown --tif %q (want GTC|FOK|IOC|POST_ONLY)", opts.TIF)
 	}
-	slBy, err := shared.ParseStopTriggerType(opts.SLBy)
-	if err != nil {
-		return err
+	var slBy futures.StopTriggerType
+	switch strings.ToUpper(opts.SLBy) {
+	case "", "LAST":
+		slBy = futures.StopTriggerTypeLast
+	case "INDEX":
+		slBy = futures.StopTriggerTypeIndex
+	case "MARK":
+		slBy = futures.StopTriggerTypeMark
+	default:
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.SLBy)
 	}
-	tpBy, err := shared.ParseStopTriggerType(opts.TPBy)
-	if err != nil {
-		return err
+	var tpBy futures.StopTriggerType
+	switch strings.ToUpper(opts.TPBy) {
+	case "", "LAST":
+		tpBy = futures.StopTriggerTypeLast
+	case "INDEX":
+		tpBy = futures.StopTriggerTypeIndex
+	case "MARK":
+		tpBy = futures.StopTriggerTypeMark
+	default:
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TPBy)
 	}
 	isStop := opts.SL != "" || opts.TP != ""
 	f := opts.Factory

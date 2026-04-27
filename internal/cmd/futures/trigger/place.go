@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"context"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
 )
 
 // PlaceOptions captures the flag-bound state of `trigger place`.
@@ -70,21 +70,34 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if err := clierr.PositiveNumber("--limit-price", opts.LimitPrice); err != nil {
 		return err
 	}
-	side, err := shared.ParseSide(opts.Side)
-	if err != nil {
-		return err
+	var side futures.Side
+	switch strings.ToUpper(opts.Side) {
+	case "BUY", "B":
+		side = futures.SideBuy
+	case "SELL", "S":
+		side = futures.SideSell
+	default:
+		return clierr.Usagef("unknown side %q (want buy|sell)", opts.Side)
 	}
-	priceType, err := shared.ParsePriceType(opts.TriggerBy)
-	if err != nil {
-		return err
+	var priceType futures.StopTriggerType
+	switch strings.ToUpper(opts.TriggerBy) {
+	case "", "LAST":
+		priceType = futures.StopTriggerTypeLast
+	case "INDEX":
+		priceType = futures.StopTriggerTypeIndex
+	case "MARK":
+		priceType = futures.StopTriggerTypeMark
+	default:
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
 	}
 	f := opts.Factory
 	currentPrice := opts.CurrentPrice
 	if currentPrice == "" {
-		currentPrice, err = fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)
+		fetched, err := fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)
 		if err != nil {
 			return err
 		}
+		currentPrice = fetched
 	}
 	resp, err := f.Client.Order.StopOrder(ctx, futures.StopOrderReq{
 		Market:        opts.Symbol,
