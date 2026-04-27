@@ -12,35 +12,69 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const helpTemplate = `{{with or .Long .Short}}{{. | trimTrailingWhitespaces}}{{end}}
+// helpTemplate renders root and subcommand --help. Sections are emitted
+// in a fixed order: description, usage, aliases, examples, commands,
+// flags, global flags. `$` is the root cobra.Command passed to Execute
+// and stays stable across ranges, so it's used to compute padding that
+// must align across nested loops.
+const helpTemplate = `
+{{- with or .Long .Short -}}
+{{. | trimTrailingWhitespaces}}
+{{- end}}
 
-{{section "Usage"}}:
+{{section "Usage"}}
   {{.UseLine}}{{commandSuffix .}}
-{{if .Aliases}}
-{{section "Aliases"}}:
+
+{{- if .Aliases}}
+
+{{section "Aliases"}}
   {{join .Aliases ", "}}
-{{end}}
-{{if .Example}}
-{{section "Examples"}}:
+{{- end}}
+
+{{- if .Example}}
+
+{{section "Examples"}}
 {{formatExamples .Example}}
-{{end}}
-{{if .HasAvailableSubCommands}}
-{{section "Commands"}}:
-{{if groupedCommands .}}{{range groupedCommands .}}{{if .Commands}}
-  {{groupTitle .Title}}
-{{range .Commands}}    {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
-{{end}}{{end}}{{end}}{{if ungroupedCommands .}}
-  {{groupTitle "Additional Commands"}}
-{{range ungroupedCommands .}}    {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
-{{end}}{{end}}{{else}}{{range ungroupedCommands .}}  {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
-{{end}}{{end}}
-{{end}}{{if .HasAvailableLocalFlags}}
-{{section "Flags"}}:
+{{- end}}
+
+{{- if .HasAvailableSubCommands}}
+{{- if groupedCommands .}}
+{{- range groupedCommands .}}
+{{- if .Commands}}
+
+{{section .Title}}
+{{- range .Commands}}
+  {{commandName (rpad (commandLabel .) (commandNamePadding $))}} {{.Short}}
+{{- end}}
+{{- end}}
+{{- end}}
+{{- if ungroupedCommands .}}
+
+{{section "Additional Commands"}}
+{{- range ungroupedCommands .}}
+  {{commandName (rpad (commandLabel .) (commandNamePadding $))}} {{.Short}}
+{{- end}}
+{{- end}}
+{{- else}}
+
+{{section "Commands"}}
+{{- range ungroupedCommands .}}
+  {{commandName (rpad (commandLabel .) (commandNamePadding $))}} {{.Short}}
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{- if .HasAvailableLocalFlags}}
+
+{{section "Flags"}}
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}
-{{end}}{{if .HasAvailableInheritedFlags}}
-{{section "Global Flags"}}:
+{{- end}}
+
+{{- if .HasAvailableInheritedFlags}}
+
+{{section "Global Flags"}}
 {{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}
-{{end}}
+{{- end}}
 `
 
 type commandGroupView struct {
@@ -87,7 +121,6 @@ func renderHelp(w io.Writer, cmd *cobra.Command) error {
 		"commandNamePadding":      commandNamePadding,
 		"rpad":                    rpad,
 		"section":                 styler.section,
-		"groupTitle":              styler.groupTitle,
 		"commandName":             styler.commandName,
 		"commandSuffix":           commandSuffix,
 		"formatExamples":          styler.formatExamples,
@@ -153,10 +186,6 @@ func (s helpStyler) section(label string) string {
 	return s.render(styleSection, strings.ToUpper(label))
 }
 
-func (s helpStyler) groupTitle(label string) string {
-	return s.render(styleGroupTitle, label)
-}
-
 func (s helpStyler) commandName(label string) string {
 	return s.render(styleCommandName, label)
 }
@@ -191,9 +220,8 @@ func (s helpStyler) render(style lipgloss.Style, value string) string {
 }
 
 var (
-	styleSection        = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	styleGroupTitle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8"))
-	styleCommandName    = lipgloss.NewStyle().Bold(true)
+	styleSection        = lipgloss.NewStyle().Bold(true)
+	styleCommandName    = lipgloss.NewStyle()
 	styleExampleComment = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	stylePrompt         = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
 )

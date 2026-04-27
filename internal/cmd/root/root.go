@@ -81,7 +81,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	cmd.AddGroup(
 		&cobra.Group{ID: "core", Title: "Core Commands"},
 		&cobra.Group{ID: "auth", Title: "Auth Commands"},
-		&cobra.Group{ID: "tools", Title: "Tooling"},
+		&cobra.Group{ID: "tools", Title: "Tooling Commands"},
 	)
 
 	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "use credentials from profile <name>")

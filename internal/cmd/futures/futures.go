@@ -32,9 +32,9 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 			"  100x futures order list --symbol BTCUSDT",
 	}
 	c.AddGroup(
-		&cobra.Group{ID: "trade", Title: "Trading"},
-		&cobra.Group{ID: "account", Title: "Account"},
-		&cobra.Group{ID: "market", Title: "Market Data"},
+		&cobra.Group{ID: "trade", Title: "Trading Commands"},
+		&cobra.Group{ID: "account", Title: "Account Commands"},
+		&cobra.Group{ID: "market", Title: "Market Data Commands"},
 	)
 	orderCmd := order.NewCmdOrder(f)
 	orderCmd.GroupID = "trade"
