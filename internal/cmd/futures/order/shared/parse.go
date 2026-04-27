@@ -2,10 +2,10 @@
 package shared
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 )
 
 // ParseSide accepts the user-friendly forms and yields a typed Side.
@@ -16,7 +16,7 @@ func ParseSide(s string) (futures.Side, error) {
 	case "SELL", "S":
 		return futures.SideSell, nil
 	}
-	return 0, fmt.Errorf("unknown side %q (want buy|sell)", s)
+	return 0, clierr.Usagef("unknown side %q (want buy|sell)", s)
 }
 
 // ParseTIF accepts the labels users type and yields a typed TIF. The
@@ -33,7 +33,7 @@ func ParseTIF(s string) (futures.TIF, error) {
 	case "POST_ONLY", "POSTONLY", "PO":
 		return futures.TIFPostOnly, nil
 	}
-	return 0, fmt.Errorf("unknown --tif %q (want GTC|FOK|IOC|POST_ONLY)", s)
+	return 0, clierr.Usagef("unknown --tif %q (want GTC|FOK|IOC|POST_ONLY)", s)
 }
 
 // ParseStopTriggerType accepts the trigger feed names used by order SL/TP.
@@ -46,5 +46,5 @@ func ParseStopTriggerType(s string) (futures.StopTriggerType, error) {
 	case "MARK":
 		return futures.StopTriggerTypeMark, nil
 	}
-	return 0, fmt.Errorf("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
+	return 0, clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }

@@ -5,24 +5,21 @@ import (
 	"testing"
 
 	"github.com/vika2603/100x-cli/api/futures"
-	"github.com/vika2603/100x-cli/api/futures/fake"
+	"github.com/vika2603/100x-cli/internal/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 // TestBuildAdjustMarketPreferenceReqMergesPreserved verifies the set-both
 // compensation: a partial CLI update reads current and merges before writing.
 func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
-	d := fake.New()
-	c := futures.NewWithDoer(d)
+	ctrl := gomock.NewController(t)
+	doer := mocks.NewMockDoer(ctrl)
+	c := futures.NewWithDoer(doer)
 	ctx := context.Background()
-
-	// Seed gateway state via the fake's POST path.
-	if _, err := c.Setting.AdjustMarketPreference(ctx, futures.AdjustMarketPreferenceReq{
-		Market: "BTCUSDT", Leverage: "20", PositionType: futures.PositionTypeIsolated,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	current := futures.MarketPreferenceResp{Leverage: "20", PositionType: futures.PositionTypeIsolated}
 
 	t.Run("change leverage only preserves position type", func(t *testing.T) {
+		expectPreferenceRead(doer, current)
 		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
 			Symbol: "BTCUSDT", Leverage: "50",
 		})
@@ -38,6 +35,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 	})
 
 	t.Run("change position type only preserves leverage", func(t *testing.T) {
+		expectPreferenceRead(doer, current)
 		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
 			Symbol: "BTCUSDT", PositionType: "CROSS",
 		})
@@ -65,6 +63,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 	})
 
 	t.Run("invalid position type errors", func(t *testing.T) {
+		expectPreferenceRead(doer, current)
 		_, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
 			Symbol: "BTCUSDT", PositionType: "garbage",
 		})
@@ -72,4 +71,13 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 			t.Fatal("expected error")
 		}
 	})
+}
+
+func expectPreferenceRead(doer *mocks.MockDoer, resp futures.MarketPreferenceResp) {
+	doer.EXPECT().
+		Get(gomock.Any(), "/open/api/v2/setting/preference", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, _ any, out any) error {
+			*out.(*futures.MarketPreferenceResp) = resp
+			return nil
+		})
 }

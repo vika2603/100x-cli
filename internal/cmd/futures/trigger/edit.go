@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
@@ -37,7 +39,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger edit BTCUSDT <trigger-id> --trigger-price 69000\n\n" +
 			"# Change the trigger price to 69000 and use MARK as the trigger feed\n" +
 			"  100x futures trigger edit BTCUSDT <trigger-id> --trigger-price 69000 --trigger-by MARK",
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.ActiveTriggerArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
@@ -47,11 +50,17 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.TriggerPrice, "trigger-price", "", "new trigger price")
 	c.Flags().StringVar(&opts.TriggerBy, "trigger-by", "LAST", "trigger feed: LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
 	return c
 }
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
+	if err := clierr.PositiveID("trigger-id", opts.OrderID); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+		return err
+	}
 	priceType, err := shared.ParsePriceType(opts.TriggerBy)
 	if err != nil {
 		return err

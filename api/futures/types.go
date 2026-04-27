@@ -5,7 +5,7 @@
 // parse with shopspring/decimal or strconv as needed.
 //
 // Construct a client with futures.New(Options{...}) for live calls or with
-// futures.NewWithDoer(d) to inject the in-memory fake from api/futures/fake.
+// futures.NewWithDoer(d) to inject a test double.
 package futures
 
 // Decimal-valued fields are strings: that is the gateway's wire format.

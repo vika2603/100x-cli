@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -15,14 +14,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
-	fakeapi "github.com/vika2603/100x-cli/api/futures/fake"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/completion"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	futuresGroup "github.com/vika2603/100x-cli/internal/cmd/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/profile"
 	"github.com/vika2603/100x-cli/internal/config"
-	"github.com/vika2603/100x-cli/internal/credential"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/session"
 	"github.com/vika2603/100x-cli/internal/version"
 )
 
@@ -59,20 +58,24 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			"Private commands read credentials from a named profile. A profile stores user identity\n" +
 			"only. The API endpoint is built into the CLI, and E100X_ENDPOINT overrides it per\n" +
 			"process. Public market commands can run without private credentials.\n\n" +
-			"Human output is designed for terminal use. Add --json for machine-readable output, and\n" +
-			"use --jq to filter that JSON when scripting. Use --help on any subcommand to inspect\n" +
+			"Human output is designed for terminal use. Add --json for machine-readable API-shaped\n" +
+			"output; --jq also enables JSON and filters it for scripts. Use --help on any subcommand to inspect\n" +
 			"required arguments, default values, examples, and command-specific notes.",
 		Example: "# Add a test profile named test and store the secret in the keychain\n" +
 			"  100x profile add test --client-id <CID>\n\n" +
 			"# Run one command against a custom endpoint without changing config\n" +
 			"  E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT\n\n" +
 			"# Show the latest ticker-style state for BTCUSDT\n" +
-			"  100x futures market state BTCUSDT\n\n" +
-			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
-			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001",
-		Version:       version.Version,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+			"  100x futures market state BTCUSDT",
+		SilenceUsage:               true,
+		SilenceErrors:              true,
+		SuggestionsMinimumDistance: 2,
+		RunE: func(c *cobra.Command, args []string) error {
+			if err := cobra.NoArgs(c, args); err != nil {
+				return clierr.Usage(clierr.WithHelpHint(err, c.CommandPath()))
+			}
+			return c.Help()
+		},
 	}
 	cmd.AddGroup(
 		&cobra.Group{ID: "core", Title: "Core Commands"},
@@ -87,22 +90,37 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	cmd.PersistentFlags().BoolVarP(&gf.yes, "yes", "y", false, "answer yes to confirmation prompts")
 	cmd.PersistentFlags().StringVar(&gf.color, "color", "auto", "color mode: auto | always | never (NO_COLOR honored)")
 	cmd.PersistentFlags().DurationVar(&gf.timeout, "timeout", 30*time.Second, "HTTP timeout per request")
+	_ = cmd.RegisterFlagCompletionFunc("profile", profile.CompleteNameFlag)
 	_ = cmd.RegisterFlagCompletionFunc("color", cobra.FixedCompletions([]string{"auto", "always", "never"}, cobra.ShellCompDirectiveNoFileComp))
 
 	cmd.PersistentPreRunE = func(c *cobra.Command, _ []string) error {
-		if isCredentialFreeCmd(c) || c.HasSubCommands() {
-			r, err := newRenderer(gf)
-			if err != nil {
-				return err
-			}
-			f.IO = r
-			f.Yes = gf.yes
+		r, err := newRenderer(gf)
+		if err != nil {
+			return err
+		}
+		f.IO = r
+		f.Yes = gf.yes
+		f.Timeout = gf.timeout
+
+		if isCredentialFreeCmd(c) || (c.HasSubCommands() && !c.Runnable()) {
 			return nil
 		}
-		if isPublicCmd(c) {
-			return populatePublic(f, gf)
+
+		sess, err := session.Load(session.LoadOptions{
+			RequestedProfile: gf.profile,
+			Timeout:          gf.timeout,
+			Public:           isPublicCmd(c),
+		})
+		if err != nil {
+			if errors.Is(err, config.ErrNoProfile) {
+				return fmt.Errorf("no profile configured: run `100x profile add`")
+			}
+			return err
 		}
-		return populate(f, gf)
+		f.Client = sess.Client
+		f.Profile = sess.Profile
+		f.ProfileName = sess.ProfileName
+		return nil
 	}
 
 	futuresCmd := futuresGroup.NewCmdFutures(f)
@@ -115,12 +133,14 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	versionCmd.GroupID = "tools"
 	cmd.AddCommand(futuresCmd, profileCmd, completionCmd, versionCmd)
 	configureHelp(cmd)
+	configureUsageErrors(cmd)
 
 	emit := func(err error, _ int, codeString string) {
 		if gf.jsonOut || gf.jq != "" {
+			message := addGenericUsageHint(err.Error(), codeString)
 			payload := struct {
 				Error errorPayload `json:"error"`
-			}{Error: errorPayload{Code: codeString, Message: err.Error()}}
+			}{Error: errorPayload{Code: codeString, Message: message}}
 			var apiErr *futures.APIError
 			if errors.As(err, &apiErr) {
 				payload.Error.Message = apiErr.Message
@@ -132,7 +152,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			_ = enc.Encode(payload)
 			return
 		}
-		fmt.Fprintln(os.Stderr, "error:", humanErrorMessage(err, codeString))
+		fmt.Fprintln(os.Stderr, "error:", addGenericUsageHint(humanErrorMessage(err, codeString), codeString))
 	}
 	return cmd, emit
 }
@@ -153,6 +173,17 @@ func humanErrorMessage(err error, codeString string) string {
 		return err.Error()
 	}
 	return summarizeNetworkError(err)
+}
+
+func addGenericUsageHint(msg, codeString string) string {
+	if codeString != "usage" || strings.Contains(msg, "--help") {
+		return msg
+	}
+	msg = strings.TrimRight(msg, " \t\r\n.")
+	if strings.Contains(msg, "\n") {
+		return msg + "\nRun `100x --help` for usage"
+	}
+	return msg + ". Run `100x --help` for usage"
 }
 
 func summarizeNetworkError(err error) string {
@@ -196,7 +227,7 @@ func summarizeNetworkCause(err error) string {
 func isCredentialFreeCmd(c *cobra.Command) bool {
 	for cur := c; cur != nil; cur = cur.Parent() {
 		switch cur.Name() {
-		case "profile", "completion", "help", "version":
+		case "profile", "completion", "help", "version", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 			return true
 		}
 	}
@@ -216,19 +247,51 @@ func newCmdVersion(f *factory.Factory) *cobra.Command {
 		Example: "# Print the CLI version, commit, and build date\n" +
 			"  100x version",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			payload := versionPayload{
-				Version:   version.Version,
-				Commit:    version.Commit,
-				BuildDate: version.BuildDate,
-			}
-			return f.IO.Render(payload, func() error {
-				return f.IO.Object([]output.KV{
-					{Key: "Version", Value: payload.Version},
-					{Key: "Commit", Value: payload.Commit},
-					{Key: "Build Date", Value: payload.BuildDate},
-				})
-			})
+			return renderVersion(f)
 		},
+	}
+}
+
+func renderVersion(f *factory.Factory) error {
+	payload := versionPayload{
+		Version:   version.Version,
+		Commit:    version.Commit,
+		BuildDate: version.BuildDate,
+	}
+	return f.IO.Render(payload, func() error {
+		return f.IO.Object([]output.KV{
+			{Key: "Version", Value: payload.Version},
+			{Key: "Commit", Value: payload.Commit},
+			{Key: "Build Date", Value: payload.BuildDate},
+		})
+	})
+}
+
+func configureUsageErrors(cmd *cobra.Command) {
+	cmd.SetFlagErrorFunc(func(c *cobra.Command, err error) error {
+		return clierr.Usage(clierr.WithHelpHint(err, c.CommandPath()))
+	})
+	if cmd.Args != nil {
+		args := cmd.Args
+		cmd.Args = func(c *cobra.Command, a []string) error {
+			if err := args(c, a); err != nil {
+				return clierr.Usage(clierr.WithHelpHint(err, c.CommandPath()))
+			}
+			return nil
+		}
+	}
+	if cmd.RunE != nil {
+		runE := cmd.RunE
+		cmd.RunE = func(c *cobra.Command, a []string) error {
+			err := runE(c, a)
+			if clierr.IsUsage(err) {
+				return clierr.Usage(clierr.WithHelpHint(err, c.CommandPath()))
+			}
+			return err
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		configureUsageErrors(sub)
 	}
 }
 
@@ -241,73 +304,6 @@ func isPublicCmd(c *cobra.Command) bool {
 		}
 	}
 	return false
-}
-
-// populate resolves the profile, secret, and SDK client into f.
-func populate(f *factory.Factory, gf *globalFlags) error {
-	r, err := newRenderer(gf)
-	if err != nil {
-		return err
-	}
-	f.IO = r
-	f.Yes = gf.yes
-	f.Timeout = gf.timeout
-
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-
-	if os.Getenv("E100X_FAKE") == "1" {
-		f.Client = futures.NewWithDoer(fakeapi.New())
-		return nil
-	}
-
-	name, p, err := config.Resolve(cfg, gf.profile)
-	if err != nil {
-		if errors.Is(err, config.ErrNoProfile) {
-			return fmt.Errorf("no profile configured: run `100x profile add` or set E100X_FAKE=1")
-		}
-		return err
-	}
-	secret, err := credential.Default().Load(name)
-	if err != nil {
-		return fmt.Errorf("load credentials for profile %q: %w", name, err)
-	}
-	endpoint, err := config.EndpointForProfile(p)
-	if err != nil {
-		return fmt.Errorf("resolve endpoint for profile %q: %w", name, err)
-	}
-	f.ProfileName = name
-	f.Profile = p
-	f.Client = futures.New(futures.Options{
-		Endpoint:   endpoint,
-		ClientID:   p.ClientID,
-		ClientKey:  secret,
-		HTTPClient: &http.Client{Timeout: gf.timeout},
-	})
-	return nil
-}
-
-func populatePublic(f *factory.Factory, gf *globalFlags) error {
-	r, err := newRenderer(gf)
-	if err != nil {
-		return err
-	}
-	f.IO = r
-	f.Yes = gf.yes
-	f.Timeout = gf.timeout
-
-	if os.Getenv("E100X_FAKE") == "1" {
-		f.Client = futures.NewWithDoer(fakeapi.New())
-		return nil
-	}
-
-	f.Client = futures.New(futures.Options{
-		Endpoint:   config.Endpoint(),
-		HTTPClient: &http.Client{Timeout: gf.timeout},
-	})
-	return nil
 }
 
 func newRenderer(gf *globalFlags) (*output.Renderer, error) {
@@ -342,6 +338,6 @@ func parseColor(s string) (output.ColorMode, error) {
 	case "never":
 		return output.ColorNever, nil
 	default:
-		return 0, fmt.Errorf("invalid --color %q (want auto, always, never)", s)
+		return 0, clierr.Usagef("invalid --color %q (want auto, always, never)", s)
 	}
 }

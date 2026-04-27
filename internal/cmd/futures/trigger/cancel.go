@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/prompt"
 )
@@ -30,7 +32,8 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger cancel BTCUSDT <trigger-id>\n\n" +
 			"# Cancel two pending BTCUSDT triggers immediately without the prompt\n" +
 			"  100x futures trigger cancel BTCUSDT <id-1> <id-2> --yes",
-		Args: cobra.MinimumNArgs(2),
+		Args:              cobra.MinimumNArgs(2),
+		ValidArgsFunction: complete.ActiveTriggerArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderIDs = args[1:]
@@ -42,6 +45,11 @@ func NewCmdCancel(f *factory.Factory) *cobra.Command {
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
 	f := opts.Factory
+	for _, id := range opts.OrderIDs {
+		if err := clierr.PositiveID("trigger-id", id); err != nil {
+			return err
+		}
+	}
 	if err := confirmCancelTriggers(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
@@ -92,7 +100,8 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger cancel-all BTCUSDT\n\n" +
 			"# Cancel every active BTCUSDT trigger immediately without the prompt\n" +
 			"  100x futures trigger cancel-all BTCUSDT --yes",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runCancelAll(cmd.Context(), opts)

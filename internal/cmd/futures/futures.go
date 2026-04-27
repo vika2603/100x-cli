@@ -26,10 +26,10 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 			"about, then inspect the subcommands for read and write flows on that resource.",
 		Example: "# Show the latest market state for BTCUSDT\n" +
 			"  100x futures market state BTCUSDT\n\n" +
-			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
-			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001\n\n" +
-			"# Set BTCUSDT leverage and margin mode before trading\n" +
-			"  100x futures preference BTCUSDT --leverage 25 --mode CROSS",
+			"# List current account balances\n" +
+			"  100x futures balance list\n\n" +
+			"# List open BTCUSDT orders\n" +
+			"  100x futures order list --symbol BTCUSDT",
 	}
 	c.AddGroup(
 		&cobra.Group{ID: "trade", Title: "Trading"},
@@ -38,16 +38,31 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	)
 	orderCmd := order.NewCmdOrder(f)
 	orderCmd.GroupID = "trade"
+	ordersCmd := order.NewCmdOrders(f)
+	ordersCmd.GroupID = "trade"
 	triggerCmd := trigger.NewCmdTrigger(f)
 	triggerCmd.GroupID = "trade"
+	triggersCmd := trigger.NewCmdTriggers(f)
+	triggersCmd.GroupID = "trade"
 	positionCmd := position.NewCmdPosition(f)
 	positionCmd.GroupID = "trade"
+	positionsCmd := position.NewCmdPositions(f)
+	positionsCmd.GroupID = "trade"
 	preferenceCmd := position.NewCmdPreference(f)
 	preferenceCmd.GroupID = "trade"
 	balanceCmd := balance.NewCmdBalance(f)
 	balanceCmd.GroupID = "account"
+	balancesCmd := balance.NewCmdBalances(f)
+	balancesCmd.GroupID = "account"
 	marketCmd := market.NewCmdMarket(f)
 	marketCmd.GroupID = "market"
-	c.AddCommand(orderCmd, triggerCmd, positionCmd, preferenceCmd, balanceCmd, marketCmd)
+	c.AddCommand(
+		orderCmd, ordersCmd,
+		triggerCmd, triggersCmd,
+		positionCmd, positionsCmd,
+		preferenceCmd,
+		balanceCmd, balancesCmd,
+		marketCmd,
+	)
 	return c
 }

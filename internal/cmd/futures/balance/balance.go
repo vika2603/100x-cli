@@ -8,15 +8,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 )
 
 // NewCmdBalance returns the `balance` group.
 func NewCmdBalance(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "balance",
-		Short: "Wallet balance and asset history",
+		Use:     "balance",
+		Aliases: []string{"bal"},
+		Short:   "Wallet balance and asset history",
 		Long: "Inspect wallet balances and asset movement history.\n\n" +
 			"Use `balance list` for the current account snapshot and `balance history` for paginated\n" +
 			"asset changes such as deposits, withdrawals, and faucet activity.",
@@ -39,8 +42,9 @@ type ListOptions struct {
 func newCmdList(f *factory.Factory) *cobra.Command {
 	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "list",
-		Short: "Show the current wallet snapshot",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "Show the current wallet snapshot",
 		Long: "Show the current wallet snapshot.\n\n" +
 			"The output includes available balance, frozen balance, margin usage, total balance,\n" +
 			"unrealized PnL, and transferable amount for each asset. Use --currency to narrow the\n" +
@@ -56,6 +60,27 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset, for example USDT")
+	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
+	return c
+}
+
+// NewCmdBalances builds the `futures balances` shortcut for `futures balance list`.
+func NewCmdBalances(f *factory.Factory) *cobra.Command {
+	opts := &ListOptions{Factory: f}
+	c := &cobra.Command{
+		Use:   "balances",
+		Short: "Show the current wallet snapshot",
+		Long:  "Shortcut for `100x futures balance list`.",
+		Example: "# Show balances for every asset in the wallet\n" +
+			"  100x futures balances\n\n" +
+			"# Filter the wallet snapshot down to USDT only\n" +
+			"  100x futures balances --currency USDT",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runList(cmd.Context(), opts)
+		},
+	}
+	c.Flags().StringVar(&opts.Currency, "currency", "", "only show this asset, for example USDT")
+	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
 	return c
 }
 
@@ -79,6 +104,9 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		resp = filtered
 	}
 	return f.IO.Render(resp, func() error {
+		if len(resp) == 0 {
+			return f.IO.Emptyln("No balances found.")
+		}
 		rows := make([][]string, 0, len(resp))
 		for _, b := range resp {
 			rows = append(rows, []string{b.Asset, b.Available, b.Frozen, b.Margin, b.BalanceTotal, b.ProfitUnreal, b.Transfer})
@@ -119,12 +147,19 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Type, "type", "", "business type: deposit | withdraw | faucet")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"deposit", "withdraw", "faucet"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("currency", complete.Assets)
+	_ = c.RegisterFlagCompletionFunc("type", complete.BalanceEventTypes)
 	return c
 }
 
 func runHistory(ctx context.Context, opts *HistoryOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveInt("--page", opts.Page); err != nil {
+		return err
+	}
+	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
+		return err
+	}
 	resp, err := f.Client.Asset.AssetHistory(ctx, futures.AssetHistoryReq{
 		Asset: strings.ToUpper(opts.Currency), Business: opts.Type, Page: opts.Page, PageSize: opts.PageSize,
 	})
@@ -136,6 +171,9 @@ func runHistory(ctx context.Context, opts *HistoryOptions) error {
 		records = []futures.AssetHistoryItem{}
 	}
 	return f.IO.Render(records, func() error {
+		if len(records) == 0 {
+			return f.IO.Emptyln("No balance history found.")
+		}
 		rows := make([][]string, 0, len(records))
 		for _, r := range records {
 			rows = append(rows, []string{format.UnixMillis(r.Time), r.Asset, format.Enum(r.Business), r.Change})

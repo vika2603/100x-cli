@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
@@ -29,8 +31,9 @@ type ListOptions struct {
 func NewCmdList(f *factory.Factory) *cobra.Command {
 	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "list",
-		Short: "List open or finished orders",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List open or finished orders",
 		Long: "List open or finished orders.\n\n" +
 			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
 		Example: "# List open orders for BTCUSDT only\n" +
@@ -43,17 +46,50 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 			return runList(cmd.Context(), opts)
 		},
 	}
+	addListFlags(c, opts)
+	return c
+}
+
+// NewCmdOrders builds the `futures orders` shortcut for `futures order list`.
+func NewCmdOrders(f *factory.Factory) *cobra.Command {
+	opts := &ListOptions{Factory: f}
+	c := &cobra.Command{
+		Use:   "orders",
+		Short: "List open or finished orders",
+		Long: "Shortcut for `100x futures order list`.\n\n" +
+			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
+		Example: "# List open orders for BTCUSDT only\n" +
+			"  100x futures orders --symbol BTCUSDT\n\n" +
+			"# List finished BTCUSDT orders from the last 24 hours with page size 50\n" +
+			"  100x futures orders --finished --symbol BTCUSDT --since now-24h --page-size 50",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runList(cmd.Context(), opts)
+		},
+	}
+	addListFlags(c, opts)
+	return c
+}
+
+func addListFlags(c *cobra.Command, opts *ListOptions) {
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show orders for this symbol")
 	c.Flags().BoolVar(&opts.Finished, "finished", false, "show finished orders instead of open orders")
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help+" (finished only)")
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help+" (finished only)")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
-	return c
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
+	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
+	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveInt("--page", opts.Page); err != nil {
+		return err
+	}
+	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
+		return err
+	}
 	if !opts.Finished {
 		resp, err := f.Client.Order.PendingOrder(ctx, futures.PendingOrderReq{
 			Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
@@ -63,7 +99,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		}
 		records := orderRecords(resp.Records)
 		return f.IO.Render(records, func() error {
-			return printOrders(f.IO, records, "Created", func(o futures.OrderItem) string {
+			return printOrders(f.IO, records, "Created", "No open orders found.", func(o futures.OrderItem) string {
 				return format.UnixSecondsFloat(o.CreateTime)
 			})
 		})
@@ -81,7 +117,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	}
 	records := orderRecords(resp.Records)
 	return f.IO.Render(records, func() error {
-		return printOrders(f.IO, records, "Updated", func(o futures.OrderItem) string {
+		return printOrders(f.IO, records, "Finished", "No finished orders found.", func(o futures.OrderItem) string {
 			return format.UnixSecondsFloat(o.UpdateTime)
 		})
 	})
@@ -94,13 +130,17 @@ func orderRecords(rows []futures.OrderItem) []futures.OrderItem {
 	return rows
 }
 
-func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader string, timeValue func(futures.OrderItem) string) error {
+func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, emptyMessage string, timeValue func(futures.OrderItem) string) error {
+	if len(rows) == 0 {
+		return io.Emptyln(emptyMessage)
+	}
 	out := make([][]string, 0, len(rows))
 	for _, o := range rows {
 		out = append(out, []string{
 			strconv.FormatInt(o.OrderID, 10),
 			o.Market,
 			format.Side(io, o.Side),
+			format.OrderType(o.Type),
 			format.OrderStatus(io, o.Status),
 			o.Price,
 			o.Volume,
@@ -111,7 +151,7 @@ func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader strin
 			timeValue(o),
 		})
 	}
-	return io.Table([]string{"Order ID", "Symbol", "Side", "Status", "Price", "Size", "Filled", "SL", "TP", "Client ID", timeHeader}, out)
+	return io.Table([]string{"Order ID", "Symbol", "Side", "Type", "Status", "Price", "Size", "Filled", "SL", "TP", "Client ID", timeHeader}, out)
 }
 
 func emptyDash(value string) string {

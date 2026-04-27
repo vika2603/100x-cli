@@ -2,13 +2,14 @@ package position
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
@@ -33,10 +34,11 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 		Example: "# Read adjustable isolated margin for one BTCUSDT position\n" +
 			"  100x futures position margin BTCUSDT --position-id <position-id>\n\n" +
 			"# Add 10 units of isolated margin to the BTCUSDT position\n" +
-			"  100x futures position margin BTCUSDT --position-id <position-id> --add 10\n\n" +
+			"  100x futures position margin BTCUSDT --add 10\n\n" +
 			"# Remove 5 units of isolated margin from the BTCUSDT position\n" +
-			"  100x futures position margin BTCUSDT --position-id <position-id> --reduce 5",
-		Args: cobra.ExactArgs(1),
+			"  100x futures position margin BTCUSDT --reduce 5",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runMargin(cmd.Context(), opts)
@@ -45,19 +47,29 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.PositionID, "position-id", "", "position ID for read mode; required when the symbol matches multiple positions")
 	c.Flags().StringVar(&opts.Add, "add", "", "amount of isolated margin to add")
 	c.Flags().StringVar(&opts.Reduce, "reduce", "", "amount of isolated margin to remove")
+	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }
 
 func runMargin(ctx context.Context, opts *MarginOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveID("position-id", opts.PositionID); opts.PositionID != "" && err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--add", opts.Add); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--reduce", opts.Reduce); err != nil {
+		return err
+	}
 	if opts.Add != "" && opts.Reduce != "" {
-		return fmt.Errorf("--add and --reduce are mutually exclusive")
+		return clierr.Usagef("--add and --reduce are mutually exclusive")
 	}
 	if opts.Add == "" && opts.Reduce == "" {
 		return renderMargin(ctx, f, opts.Symbol, opts.PositionID)
 	}
 	if opts.PositionID != "" {
-		return fmt.Errorf("--position-id is only valid in read mode")
+		return clierr.Usagef("--position-id is only valid in read mode")
 	}
 
 	action, amount := futures.MarginActionAdd, opts.Add

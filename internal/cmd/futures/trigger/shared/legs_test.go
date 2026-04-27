@@ -2,36 +2,33 @@ package shared
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/vika2603/100x-cli/api/futures"
-	"github.com/vika2603/100x-cli/api/futures/fake"
+	"github.com/vika2603/100x-cli/internal/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 // TestBuildAttachOrderReqPreservesOtherLeg locks in the read-modify-send
 // behaviour: setting SL must not clobber the existing TP and vice versa.
 func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
-	d := fake.New()
-	c := futures.NewWithDoer(d)
+	ctrl := gomock.NewController(t)
+	doer := mocks.NewMockDoer(ctrl)
+	c := futures.NewWithDoer(doer)
 	ctx := context.Background()
-
-	// Seed an order with both legs already set on the gateway.
-	resp, err := c.Order.LimitOrder(ctx, futures.LimitOrderReq{
-		Market:          "BTCUSDT",
-		Side:            futures.SideBuy,
-		Price:           "70000",
-		Quantity:        "1",
-		StopLossPrice:   "65000",
-		TakeProfitPrice: "75000",
-	})
-	if err != nil {
-		t.Fatal(err)
+	orderID := int64(1001)
+	orderIDText := strconv.FormatInt(orderID, 10)
+	current := futures.OrderItem{
+		OrderID: orderID, Market: "BTCUSDT", Side: futures.SideBuy,
+		Price: "70000", Volume: "1", Status: futures.OrderStatusPending,
+		StopLossPrice: "65000", TakeProfitPrice: "75000",
 	}
-	orderID := resp.OrderID
 
 	t.Run("update SL preserves TP", func(t *testing.T) {
+		expectOrderDetail(doer, current)
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Symbol: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: orderIDText,
 			Leg: LegSL, Price: "60000", PriceType: futures.StopTriggerTypeLast,
 		})
 		if err != nil {
@@ -46,8 +43,9 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 	})
 
 	t.Run("update TP preserves SL", func(t *testing.T) {
+		expectOrderDetail(doer, current)
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Symbol: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: orderIDText,
 			Leg: LegTP, Price: "80000", PriceType: futures.StopTriggerTypeMark,
 		})
 		if err != nil {
@@ -62,8 +60,9 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 	})
 
 	t.Run("ClearOther wipes opposite leg", func(t *testing.T) {
+		expectOrderDetail(doer, current)
 		req, err := BuildAttachOrderReq(ctx, c, AttachOrderInput{
-			Symbol: "BTCUSDT", OrderID: itoa(orderID),
+			Symbol: "BTCUSDT", OrderID: orderIDText,
 			Leg: LegSL, Price: "60000", PriceType: futures.StopTriggerTypeLast,
 			ClearOther: true,
 		})
@@ -77,6 +76,15 @@ func TestBuildAttachOrderReqPreservesOtherLeg(t *testing.T) {
 			t.Fatalf("TP=%q want empty (cleared)", req.TakeProfitPrice)
 		}
 	})
+}
+
+func expectOrderDetail(doer *mocks.MockDoer, resp futures.OrderItem) {
+	doer.EXPECT().
+		Get(gomock.Any(), "/open/api/v2/order/detail", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, _ any, out any) error {
+			*out.(*futures.OrderItem) = resp
+			return nil
+		})
 }
 
 // TestParseLeg covers all valid spellings and rejects junk.
@@ -94,27 +102,4 @@ func TestParseLeg(t *testing.T) {
 	if _, err := ParseLeg("garbage"); err == nil {
 		t.Error("ParseLeg(garbage) should error")
 	}
-}
-
-func itoa(i int64) string {
-	const digits = "0123456789"
-	if i == 0 {
-		return "0"
-	}
-	neg := i < 0
-	if neg {
-		i = -i
-	}
-	var buf [20]byte
-	pos := len(buf)
-	for i > 0 {
-		pos--
-		buf[pos] = digits[i%10]
-		i /= 10
-	}
-	if neg {
-		pos--
-		buf[pos] = '-'
-	}
-	return string(buf[pos:])
 }

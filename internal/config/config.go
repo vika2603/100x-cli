@@ -6,7 +6,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -37,12 +36,4 @@ func Endpoint() string {
 		return endpoint
 	}
 	return DefaultEndpoint
-}
-
-// EndpointForProfile resolves the endpoint used with p.
-func EndpointForProfile(p *Profile) (string, error) {
-	if p == nil {
-		return "", fmt.Errorf("profile is nil")
-	}
-	return Endpoint(), nil
 }

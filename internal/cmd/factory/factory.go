@@ -16,8 +16,8 @@ import (
 
 // Factory carries the live dependencies for a CLI invocation.
 type Factory struct {
-	// Client is the futures API client. May be a real signed client or the
-	// in-memory fake; verbs do not care which.
+	// Client is the futures API client. Verbs do not care whether it is a
+	// signed HTTP client or a test-injected Doer.
 	Client *futures.Client
 
 	// IO is the output renderer (stdout / stderr / format / jq / quiet).

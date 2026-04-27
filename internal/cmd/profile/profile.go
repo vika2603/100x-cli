@@ -14,8 +14,9 @@ import (
 // `profile remove` consults for the destructive-op contract.
 func NewCmdProfile(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "profile",
-		Short: "Manage credential profiles",
+		Use:     "profile",
+		Aliases: []string{"prof"},
+		Short:   "Manage credential profiles",
 		Long: "Manage named credential profiles for private API access.\n\n" +
 			"Profiles store client identity. Secrets are stored in the OS keychain; they are not\n" +
 			"written back into the config file. The API endpoint is built into the CLI and can be\n" +

@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
 )
@@ -46,11 +48,20 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
+	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
+	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)
 	return c
 }
 
 func runDeals(ctx context.Context, opts *DealsOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveInt("--page", opts.Page); err != nil {
+		return err
+	}
+	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
+		return err
+	}
 	startTime, endTime, err := timeexpr.ResolveRange(opts.Since, opts.Until)
 	if err != nil {
 		return err
@@ -67,6 +78,9 @@ func runDeals(ctx context.Context, opts *DealsOptions) error {
 		records = []futures.OrderDealItem{}
 	}
 	return f.IO.Render(records, func() error {
+		if len(records) == 0 {
+			return f.IO.Emptyln("No fills found.")
+		}
 		rows := make([][]string, 0, len(records))
 		for _, d := range records {
 			rows = append(rows, []string{

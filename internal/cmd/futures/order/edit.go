@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -33,7 +35,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 			"The gateway rebooks edited limit orders as a new order id. The CLI preserves attached SL/TP only when the backend can do so safely.",
 		Example: "# Rebook one BTCUSDT order to price 70500 and size 0.002\n" +
 			"  100x futures order edit BTCUSDT <order-id> --price 70500 --size 0.002",
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.OpenOrderArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
@@ -44,12 +47,22 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Size, "size", "", "new order quantity")
 	_ = c.MarkFlagRequired("price")
 	_ = c.MarkFlagRequired("size")
+	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
 	return c
 }
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
 	if opts.Price == "" || opts.Size == "" {
-		return fmt.Errorf("order edit: --price and --size are required")
+		return clierr.Usagef("order edit: --price and --size are required")
+	}
+	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--price", opts.Price); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
+		return err
 	}
 	f := opts.Factory
 	protection, err := readOrderProtection(ctx, f.Client, opts.Symbol, opts.OrderID)

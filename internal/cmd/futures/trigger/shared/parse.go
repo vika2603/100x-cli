@@ -6,10 +6,10 @@
 package shared
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 )
 
 // ParseSide accepts the user-friendly forms.
@@ -20,7 +20,7 @@ func ParseSide(s string) (futures.Side, error) {
 	case "SELL", "S":
 		return futures.SideSell, nil
 	}
-	return 0, fmt.Errorf("unknown side %q (want buy|sell)", s)
+	return 0, clierr.Usagef("unknown side %q (want buy|sell)", s)
 }
 
 // ParsePriceType picks the trigger's price feed. The empty string
@@ -35,7 +35,7 @@ func ParsePriceType(s string) (futures.StopTriggerType, error) {
 	case "MARK":
 		return futures.StopTriggerTypeMark, nil
 	}
-	return 0, fmt.Errorf("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
+	return 0, clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }
 
 // Leg is which leg an attach request is updating.
@@ -55,5 +55,5 @@ func ParseLeg(s string) (Leg, error) {
 	case "TP", "TAKE-PROFIT":
 		return LegTP, nil
 	}
-	return 0, fmt.Errorf("unknown leg %q (want SL|TP)", s)
+	return 0, clierr.Usagef("unknown leg %q (want SL|TP)", s)
 }

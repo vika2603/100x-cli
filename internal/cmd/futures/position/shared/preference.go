@@ -3,10 +3,10 @@ package shared
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 )
 
 // ParsePositionType accepts cross / isolated.
@@ -17,7 +17,7 @@ func ParsePositionType(s string) (futures.PositionType, error) {
 	case "ISOLATED":
 		return futures.PositionTypeIsolated, nil
 	}
-	return 0, fmt.Errorf("unknown mode %q (want ISOLATED|CROSS)", s)
+	return 0, clierr.Usagef("unknown mode %q (want ISOLATED|CROSS)", s)
 }
 
 // MergedPreferenceInput describes a partial preference update; missing fields

@@ -6,7 +6,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
 )
 
@@ -35,7 +37,8 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger place BTCUSDT --side buy --trigger-price 65000 --size 0.001\n\n" +
 			"# Place a SELL trigger that submits a limit order at 81950 when 82000 is reached\n" +
 			"  100x futures trigger place BTCUSDT --side sell --trigger-price 82000 --limit-price 81950 --size 0.001",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
@@ -51,12 +54,22 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")
 	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("side", cobra.FixedCompletions([]string{"buy", "sell"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("side", complete.OrderSides)
+	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
+	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
 	return c
 }
 
 func runPlace(ctx context.Context, opts *PlaceOptions) error {
+	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--limit-price", opts.LimitPrice); err != nil {
+		return err
+	}
 	side, err := shared.ParseSide(opts.Side)
 	if err != nil {
 		return err

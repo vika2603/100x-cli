@@ -5,6 +5,7 @@
 package format
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,18 @@ func Side(io *output.Renderer, s futures.Side) string {
 		return io.Negative(v)
 	}
 	return v
+}
+
+// OrderType names regular order execution types.
+func OrderType(t int) string {
+	switch t {
+	case 1:
+		return "LIMIT"
+	case 2:
+		return "MARKET"
+	default:
+		return strconv.Itoa(t)
+	}
 }
 
 // OrderStatus colours by lifecycle:

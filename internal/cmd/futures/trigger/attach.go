@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger/shared"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
@@ -52,7 +54,8 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger attach order BTCUSDT <order-id> --type SL --trigger-price 68000\n\n" +
 			"# Replace the opposite leg while attaching take-profit at 82000\n" +
 			"  100x futures trigger attach order BTCUSDT <order-id> --type TP --trigger-price 82000 --clear-other",
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.OpenOrderArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
@@ -65,12 +68,18 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite SL/TP leg")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"SL", "TP"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)
+	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
 	return c
 }
 
 func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
+	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+		return err
+	}
 	leg, err := shared.ParseLeg(opts.Leg)
 	if err != nil {
 		return err
@@ -148,7 +157,8 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger attach position BTCUSDT <position-id> --type SL --trigger-price 68000\n\n" +
 			"# Attach a take-profit leg at 82000 to one BTCUSDT position\n" +
 			"  100x futures trigger attach position BTCUSDT <position-id> --type TP --trigger-price 82000",
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.OpenPositionArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.PositionID = args[1]
@@ -161,12 +171,18 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 	c.Flags().BoolVar(&opts.ClearOther, "clear-other", false, "clear the opposite SL/TP leg")
 	_ = c.MarkFlagRequired("type")
 	_ = c.MarkFlagRequired("trigger-price")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"SL", "TP"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("trigger-by", cobra.FixedCompletions([]string{"LAST", "INDEX", "MARK"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("type", complete.TriggerLegs)
+	_ = c.RegisterFlagCompletionFunc("trigger-by", complete.TriggerFeeds)
 	return c
 }
 
 func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
+	if err := clierr.PositiveID("position-id", opts.PositionID); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
+		return err
+	}
 	leg, err := shared.ParseLeg(opts.Leg)
 	if err != nil {
 		return err

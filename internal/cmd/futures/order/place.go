@@ -2,13 +2,14 @@ package order
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/order/shared"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
@@ -45,7 +46,8 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 			"  100x futures order place BTCUSDT --type market --side sell --size 0.001\n\n" +
 			"# Place a BUY limit order and attach SL 68000 plus TP 76000\n" +
 			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001 --sl 68000 --tp 76000",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runPlace(cmd.Context(), opts)
@@ -63,14 +65,29 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.TPBy, "tp-by", "LAST", "take-profit price feed: LAST | INDEX | MARK")
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("side", cobra.FixedCompletions([]string{"buy", "sell"}, cobra.ShellCompDirectiveNoFileComp))
-	_ = c.RegisterFlagCompletionFunc("tif", cobra.FixedCompletions([]string{"GTC", "FOK", "IOC", "POST_ONLY"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
+	_ = c.RegisterFlagCompletionFunc("side", complete.OrderSides)
+	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
+	_ = c.RegisterFlagCompletionFunc("tif", complete.TimeInForce)
+	_ = c.RegisterFlagCompletionFunc("sl-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("tp-by", complete.TriggerFeeds)
 	return c
 }
 
 // runPlace is the pure logic — no cobra dependency, callable from tests.
 func runPlace(ctx context.Context, opts *PlaceOptions) error {
+	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
+		return err
+	}
+	for name, value := range map[string]string{
+		"--price": opts.Price,
+		"--sl":    opts.SL,
+		"--tp":    opts.TP,
+	} {
+		if err := clierr.PositiveNumber(name, value); err != nil {
+			return err
+		}
+	}
 	side, err := shared.ParseSide(opts.Side)
 	if err != nil {
 		return err
@@ -92,7 +109,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" {
-			return fmt.Errorf("--price is required for limit orders")
+			return clierr.Usagef("--price is required for limit orders")
 		}
 		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
 			Market:        opts.Symbol,
@@ -136,5 +153,5 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			})
 		})
 	}
-	return fmt.Errorf("unknown --type %q (want limit|market)", opts.Type)
+	return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
 }

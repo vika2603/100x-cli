@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -25,8 +27,9 @@ type ListOptions struct {
 func NewCmdList(f *factory.Factory) *cobra.Command {
 	opts := &ListOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "list",
-		Short: "List open positions",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List open positions",
 		Example: "# List every open position in the account\n" +
 			"  100x futures position list\n\n" +
 			"# List open positions for BTCUSDT only\n" +
@@ -38,6 +41,27 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show positions for this symbol")
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
+	return c
+}
+
+// NewCmdPositions builds the `futures positions` shortcut for `futures position list`.
+func NewCmdPositions(f *factory.Factory) *cobra.Command {
+	opts := &ListOptions{Factory: f}
+	c := &cobra.Command{
+		Use:   "positions",
+		Short: "List open positions",
+		Long:  "Shortcut for `100x futures position list`.",
+		Example: "# List every open position in the account\n" +
+			"  100x futures positions\n\n" +
+			"# List open positions for BTCUSDT only\n" +
+			"  100x futures positions --symbol BTCUSDT",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runList(cmd.Context(), opts)
+		},
+	}
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show positions for this symbol")
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	return c
 }
 
@@ -64,6 +88,12 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 			"# Extract position id, side, open, close, pnl, and roe as JSON\n" +
 			"  100x --json futures position history --symbol BTCUSDT --page-size 20 --jq 'map({position_id, side, open_price, close_price, profit_real, roe})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := clierr.PositiveInt("--page", opts.Page); err != nil {
+				return err
+			}
+			if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
+				return err
+			}
 			resp, err := f.Client.Position.PositionHistory(cmd.Context(), futures.PositionHistoryReq{
 				Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 			})
@@ -80,10 +110,14 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Symbol, "symbol", "", "only show closed positions for this symbol")
 	c.Flags().IntVar(&opts.Page, "page", 1, "page number")
 	c.Flags().IntVar(&opts.PageSize, "page-size", 20, "items per page")
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	return c
 }
 
 func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error {
+	if len(rows) == 0 {
+		return io.Emptyln("No open positions found.")
+	}
 	out := make([][]string, 0, len(rows))
 	for _, p := range rows {
 		out = append(out, []string{
@@ -95,6 +129,9 @@ func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail) error 
 }
 
 func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail) error {
+	if len(rows) == 0 {
+		return io.Emptyln("No closed positions found.")
+	}
 	out := make([][]string, 0, len(rows))
 	for _, p := range rows {
 		out = append(out, []string{

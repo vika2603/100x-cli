@@ -7,19 +7,29 @@ import (
 	"testing"
 
 	"github.com/vika2603/100x-cli/api/futures"
-	"github.com/vika2603/100x-cli/api/futures/fake"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/mocks"
 	"github.com/vika2603/100x-cli/internal/output"
+	"go.uber.org/mock/gomock"
 )
 
-// TestRunPlaceLimit drives runPlace end-to-end against the in-memory fake.
-//
-// This is the bell-curve test for verb wiring: flag-bound options →
-// SDK call → renderer. If you broke any of the three, this fails.
+// TestRunPlaceLimit drives verb wiring: flag-bound options → SDK call → renderer.
 func TestRunPlaceLimit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	doer := mocks.NewMockDoer(ctrl)
+	doer.EXPECT().
+		Post(gomock.Any(), "/open/api/v2/order/limit", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ string, in, out any) error {
+			req := in.(futures.LimitOrderReq)
+			*out.(*futures.LimitOrderResp) = futures.LimitOrderResp{OrderItem: futures.OrderItem{
+				OrderID: 1001, Market: req.Market, Side: req.Side,
+				Price: req.Price, Volume: req.Quantity, Status: futures.OrderStatusPending,
+			}}
+			return nil
+		})
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	f := &factory.Factory{
-		Client: futures.NewWithDoer(fake.New()),
+		Client: futures.NewWithDoer(doer),
 		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
 	}
 	opts := &PlaceOptions{
@@ -38,8 +48,9 @@ func TestRunPlaceLimit(t *testing.T) {
 
 // TestRunPlaceUnknownType errors out before calling the SDK.
 func TestRunPlaceUnknownType(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	f := &factory.Factory{
-		Client: futures.NewWithDoer(fake.New()),
+		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
 		IO:     output.New(),
 	}
 	opts := &PlaceOptions{Type: "stop", Symbol: "BTC", Side: "buy", Size: "1", Factory: f}

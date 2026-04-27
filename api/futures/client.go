@@ -11,7 +11,7 @@ import (
 //
 // Implementations:
 //   - *transport.Client signs and sends real HTTP requests
-//   - api/futures/fake provides an in-memory implementation for tests
+//   - generated mocks can be injected in tests
 //
 // `in` is the typed request struct (or nil); `out` is a pointer the response
 // data is decoded into. Auth parameters are added by the implementation and

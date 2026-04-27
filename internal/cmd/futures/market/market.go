@@ -3,13 +3,14 @@ package market
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
@@ -18,8 +19,9 @@ import (
 // NewCmdMarket returns the `market` group.
 func NewCmdMarket(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "market",
-		Short: "Public market data",
+		Use:     "market",
+		Aliases: []string{"m"},
+		Short:   "Public market data",
 		Long: "Read public futures market data.\n\n" +
 			"These commands do not place trades or require private credentials. Use them to discover\n" +
 			"symbols, inspect ticker state, read the current order book, list recent public trades,\n" +
@@ -36,8 +38,9 @@ func NewCmdMarket(f *factory.Factory) *cobra.Command {
 func newCmdList(f *factory.Factory) *cobra.Command {
 	var includeUnavailable bool
 	c := &cobra.Command{
-		Use:   "list",
-		Short: "List all tradable instruments",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all tradable instruments",
 		Long: "List futures markets known to the gateway.\n\n" +
 			"By default the command shows only currently tradable markets. Use\n" +
 			"--include-unavailable to include markets that exist but are not currently available.",
@@ -48,33 +51,37 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			"# Extract symbol, tick size, and availability as JSON\n" +
 			"  100x --json futures market list --include-unavailable --jq 'map({symbol: .name, tick_size: .tick_size, available})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			resp, err := f.Client.Market.MarketList(cmd.Context(), futures.MarketListReq{})
-			if err != nil {
-				return err
-			}
-			if resp == nil {
-				resp = []futures.MarketItem{}
-			}
-			if !includeUnavailable {
-				filtered := resp[:0]
-				for _, m := range resp {
-					if m.Available {
-						filtered = append(filtered, m)
-					}
-				}
-				resp = filtered
-			}
-			return f.IO.Render(resp, func() error {
-				rows := make([][]string, 0, len(resp))
-				for _, m := range resp {
-					rows = append(rows, []string{m.Name, m.Stock, m.Money, m.TickSize, m.MakerFee, m.TakerFee})
-				}
-				return f.IO.Table([]string{"Symbol", "Base", "Quote", "Tick Size", "Maker Fee", "Taker Fee"}, rows)
-			})
+			return runMarketList(cmd.Context(), f, includeUnavailable)
 		},
 	}
 	c.Flags().BoolVar(&includeUnavailable, "include-unavailable", false, "include markets that are not currently tradable")
 	return c
+}
+
+func runMarketList(ctx context.Context, f *factory.Factory, includeUnavailable bool) error {
+	resp, err := f.Client.Market.MarketList(ctx, futures.MarketListReq{})
+	if err != nil {
+		return err
+	}
+	if resp == nil {
+		resp = []futures.MarketItem{}
+	}
+	if !includeUnavailable {
+		filtered := resp[:0]
+		for _, m := range resp {
+			if m.Available {
+				filtered = append(filtered, m)
+			}
+		}
+		resp = filtered
+	}
+	return f.IO.Render(resp, func() error {
+		rows := make([][]string, 0, len(resp))
+		for _, m := range resp {
+			rows = append(rows, []string{m.Name, m.Stock, m.Money, m.TickSize, m.MakerFee, m.TakerFee})
+		}
+		return f.IO.Table([]string{"Symbol", "Base", "Quote", "Tick Size", "Maker Fee", "Taker Fee"}, rows)
+	})
 }
 
 // StateOptions for `market state`.
@@ -99,7 +106,8 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 			"  100x futures market state BTCUSDT\n\n" +
 			"# Extract symbol, last price, and next funding rate from all markets\n" +
 			"  100x --json futures market state --jq 'map({symbol: .market, last, funding_rate_next})'",
-		Args: cobra.MaximumNArgs(1),
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				opts.Symbol = args[0]
@@ -181,9 +189,13 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 			"  100x futures market depth BTCUSDT\n\n" +
 			"# Merge levels by tick size 0.1 and show 20 bids and 20 asks\n" +
 			"  100x futures market depth BTCUSDT --tick-size 0.1 --limit 20",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
+			if err := clierr.PositiveInt("--limit", opts.Limit); err != nil {
+				return err
+			}
 			resp, err := f.Client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Symbol, Merge: opts.TickSize})
 			if err != nil {
 				return err
@@ -212,9 +224,13 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			"  100x futures market deals BTCUSDT --limit 50\n\n" +
 			"# Extract trade id, side, price, and size as JSON\n" +
 			"  100x --json futures market deals BTCUSDT --limit 20 --jq 'map({id, type, price, volume})'",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			symbol = args[0]
+			if err := clierr.PositiveInt("--limit", limit); err != nil {
+				return err
+			}
 			resp, err := f.Client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: symbol})
 			if err != nil {
 				return err
@@ -254,7 +270,8 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 			"  100x futures market kline BTCUSDT --since now-1h --until now --interval 5m\n\n" +
 			"# Extract time, open, high, low, and close as JSON\n" +
 			"  100x --json futures market kline BTCUSDT --interval 5m --limit 12 --jq 'map({time, open, high, low, close})'",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runKline(cmd.Context(), opts)
@@ -264,11 +281,17 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Since, "since", "", "start time: "+timeexpr.Help)
 	c.Flags().StringVar(&opts.Until, "until", "", "end time: "+timeexpr.Help)
 	c.Flags().IntVar(&opts.Limit, "limit", 20, "latest candles to show")
+	_ = c.RegisterFlagCompletionFunc("interval", complete.KlineIntervals)
+	_ = c.RegisterFlagCompletionFunc("since", complete.TimeExpressions)
+	_ = c.RegisterFlagCompletionFunc("until", complete.TimeExpressions)
 	return c
 }
 
 func runKline(ctx context.Context, opts *KlineOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveInt("--limit", opts.Limit); err != nil {
+		return err
+	}
 	interval, err := parseInterval(opts.Interval)
 	if err != nil {
 		return err
@@ -323,19 +346,19 @@ func parseInterval(s string) (string, error) {
 		"1day", "1week", "1month":
 		return s, nil
 	default:
-		return "", fmt.Errorf("unknown --interval %q", s)
+		return "", clierr.Usagef("unknown --interval %q", s)
 	}
 }
 
 func trimDepth(resp *futures.MarketDepthResp, limit int) {
-	if limit <= 0 {
-		return
-	}
 	resp.Asks = limitSlice(resp.Asks, limit)
 	resp.Bids = limitSlice(resp.Bids, limit)
 }
 
 func printDepth(io *output.Renderer, d *futures.MarketDepthResp) error {
+	if len(d.Asks) == 0 && len(d.Bids) == 0 {
+		return io.Emptyln("No depth levels found.")
+	}
 	rows := make([][]string, 0, len(d.Asks)+len(d.Bids))
 	for _, ask := range d.Asks {
 		rows = append(rows, []string{"ASK", ask.Price, ask.Volume})
@@ -347,6 +370,9 @@ func printDepth(io *output.Renderer, d *futures.MarketDepthResp) error {
 }
 
 func printMarketDeals(io *output.Renderer, rows []futures.MarketDealItem) error {
+	if len(rows) == 0 {
+		return io.Emptyln("No public trades found.")
+	}
 	out := make([][]string, 0, len(rows))
 	for _, d := range rows {
 		out = append(out, []string{
@@ -361,6 +387,9 @@ func printMarketDeals(io *output.Renderer, rows []futures.MarketDealItem) error 
 }
 
 func printKlines(io *output.Renderer, rows []futures.MarketKlineItem) error {
+	if len(rows) == 0 {
+		return io.Emptyln("No candles found.")
+	}
 	out := make([][]string, 0, len(rows))
 	for _, k := range rows {
 		out = append(out, []string{
@@ -376,14 +405,14 @@ func printKlines(io *output.Renderer, rows []futures.MarketKlineItem) error {
 }
 
 func limitSlice[T any](items []T, limit int) []T {
-	if limit <= 0 || len(items) <= limit {
+	if len(items) <= limit {
 		return items
 	}
 	return items[:limit]
 }
 
 func limitTail[T any](items []T, limit int) []T {
-	if limit <= 0 || len(items) <= limit {
+	if len(items) <= limit {
 		return items
 	}
 	return items[len(items)-limit:]

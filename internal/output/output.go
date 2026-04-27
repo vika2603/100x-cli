@@ -103,3 +103,12 @@ func (r *Renderer) Resultln(args ...any) error {
 	_, err := fmt.Fprintln(r.Out, args...)
 	return err
 }
+
+// Emptyln writes a human-readable empty-state message to stdout.
+func (r *Renderer) Emptyln(message string) error {
+	if r.Quiet {
+		return nil
+	}
+	_, err := fmt.Fprintln(r.Out, message)
+	return err
+}

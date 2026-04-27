@@ -15,8 +15,9 @@ import (
 // NewCmdTrigger returns the `trigger` group.
 func NewCmdTrigger(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "trigger",
-		Short: "Condition-order (SL / TP) operations",
+		Use:     "trigger",
+		Aliases: []string{"t"},
+		Short:   "Condition-order (SL / TP) operations",
 		Long: "Manage standalone trigger orders and attached SL/TP legs.\n\n" +
 			"`trigger place` creates a standalone conditional order. `trigger attach` manages stop-loss\n" +
 			"and take-profit legs on existing orders or positions. `trigger list`, `edit`, and `cancel`\n" +

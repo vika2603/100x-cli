@@ -426,23 +426,3 @@ func (c *OrderClient) LimitOrderBatch(ctx context.Context, req LimitOrderBatchRe
 	}
 	return &resp, nil
 }
-
-// ReportOrderReq submits a maker self-trade-volume report via POST /order/report.
-type ReportOrderReq struct {
-	Market   string `url:"market,omitempty" json:"market,omitempty"`
-	Side     Side   `url:"side,omitempty" json:"side,omitempty"`
-	Price    string `url:"price,omitempty" json:"price,omitempty"`
-	Quantity string `url:"quantity,omitempty" json:"quantity,omitempty"`
-}
-
-// ReportOrderResp is the empty response of /order/report.
-type ReportOrderResp struct{}
-
-// ReportOrder submits a maker self-trade-volume report.
-func (c *OrderClient) ReportOrder(ctx context.Context, req ReportOrderReq) (*ReportOrderResp, error) {
-	var resp ReportOrderResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/report", req, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}

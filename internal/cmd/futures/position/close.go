@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
@@ -39,7 +41,8 @@ func NewCmdClose(f *factory.Factory) *cobra.Command {
 			"  100x futures position close BTCUSDT --position-id <position-id> --price 80000 --size 0.001\n\n" +
 			"# Close the full BTCUSDT position at market without the prompt\n" +
 			"  100x futures position close BTCUSDT --position-id <position-id> --type market --yes",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runClose(cmd.Context(), opts)
@@ -50,16 +53,27 @@ func NewCmdClose(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
 	c.Flags().StringVar(&opts.Size, "size", "", "quantity to close")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client-supplied order ID")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
+	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
+	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }
 
 func runClose(ctx context.Context, opts *CloseOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveID("position-id", opts.PositionID); opts.PositionID != "" && err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--price", opts.Price); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" || opts.Size == "" {
-			return fmt.Errorf("--price and --size are required for limit position close")
+			return clierr.Usagef("--price and --size are required for limit position close")
 		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
@@ -116,5 +130,5 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 			})
 		})
 	}
-	return fmt.Errorf("unknown --type %q (want limit|market)", opts.Type)
+	return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
 }

@@ -15,7 +15,7 @@ import (
 const helpTemplate = `{{with or .Long .Short}}{{. | trimTrailingWhitespaces}}{{end}}
 
 {{section "Usage"}}:
-  {{.UseLine}}{{if .HasAvailableSubCommands}} <command>{{end}}
+  {{.UseLine}}{{commandSuffix .}}
 {{if .Aliases}}
 {{section "Aliases"}}:
   {{join .Aliases ", "}}
@@ -28,11 +28,11 @@ const helpTemplate = `{{with or .Long .Short}}{{. | trimTrailingWhitespaces}}{{e
 {{section "Commands"}}:
 {{if groupedCommands .}}{{range groupedCommands .}}{{if .Commands}}
   {{groupTitle .Title}}
-{{range .Commands}}    {{commandName (rpad .Name .NamePadding) }} {{.Short}}
+{{range .Commands}}    {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
 {{end}}{{end}}{{end}}{{if ungroupedCommands .}}
   {{groupTitle "Additional Commands"}}
-{{range ungroupedCommands .}}    {{commandName (rpad .Name .NamePadding) }} {{.Short}}
-{{end}}{{end}}{{else}}{{range ungroupedCommands .}}  {{commandName (rpad .Name .NamePadding) }} {{.Short}}
+{{range ungroupedCommands .}}    {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
+{{end}}{{end}}{{else}}{{range ungroupedCommands .}}  {{commandName (rpad (commandLabel .) (commandNamePadding $)) }} {{.Short}}
 {{end}}{{end}}
 {{end}}{{if .HasAvailableLocalFlags}}
 {{section "Flags"}}:
@@ -83,10 +83,13 @@ func renderHelp(w io.Writer, cmd *cobra.Command) error {
 		"join":                    strings.Join,
 		"groupedCommands":         groupedCommands,
 		"ungroupedCommands":       ungroupedCommands,
+		"commandLabel":            commandLabel,
+		"commandNamePadding":      commandNamePadding,
 		"rpad":                    rpad,
 		"section":                 styler.section,
 		"groupTitle":              styler.groupTitle,
 		"commandName":             styler.commandName,
+		"commandSuffix":           commandSuffix,
 		"formatExamples":          styler.formatExamples,
 		"trimTrailingWhitespaces": trimTrailingWhitespaces,
 	}).Parse(helpTemplate)
@@ -98,6 +101,36 @@ func renderHelp(w io.Writer, cmd *cobra.Command) error {
 	}
 	_, err = fmt.Fprintln(w)
 	return err
+}
+
+func commandSuffix(cmd *cobra.Command) string {
+	if !cmd.HasAvailableSubCommands() {
+		return ""
+	}
+	if cmd.Annotations["100x-default-command"] == "list" {
+		return " [command]"
+	}
+	return " <command>"
+}
+
+func commandLabel(cmd *cobra.Command) string {
+	if len(cmd.Aliases) == 0 {
+		return cmd.Name()
+	}
+	return fmt.Sprintf("%s (%s)", cmd.Name(), strings.Join(cmd.Aliases, ", "))
+}
+
+func commandNamePadding(cmd *cobra.Command) int {
+	max := 0
+	for _, sub := range cmd.Commands() {
+		if !sub.IsAvailableCommand() || sub.IsAdditionalHelpTopicCommand() {
+			continue
+		}
+		if n := len(commandLabel(sub)); n > max {
+			max = n
+		}
+	}
+	return max
 }
 
 func rpad(s string, padding int) string {

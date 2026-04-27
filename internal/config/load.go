@@ -8,8 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// ErrNoProfile is returned when no profile is configured and no fallback
-// (env vars / fake) is in effect.
+// ErrNoProfile is returned when no profile is configured.
 var ErrNoProfile = errors.New("no profile configured")
 
 // Load reads the TOML config file. Returns an empty Config (no error) when

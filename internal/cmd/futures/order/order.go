@@ -15,8 +15,9 @@ import (
 // NewCmdOrder returns the `order` group.
 func NewCmdOrder(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "order",
-		Short: "Limit/market order operations",
+		Use:     "order",
+		Aliases: []string{"o"},
+		Short:   "Limit/market order operations",
 		Long: "Place, inspect, modify, and cancel futures orders.\n\n" +
 			"Use `order place` for new orders, `order list` and `order show` to inspect existing\n" +
 			"orders, `order edit` to rebook an open limit order, and `order cancel` / `cancel-all`\n" +

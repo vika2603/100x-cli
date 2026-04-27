@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -161,8 +162,9 @@ type profileDetail struct {
 
 func newCmdList(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List configured profiles",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List configured profiles",
 		Example: "# List all profiles in a human-readable table\n" +
 			"  100x profile list\n\n" +
 			"# List all profiles as JSON for scripts\n" +
@@ -187,6 +189,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 				})
 			}
 			return f.IO.Render(rows, func() error {
+				if len(rows) == 0 {
+					return f.IO.Emptyln("No profiles configured.")
+				}
 				out := make([][]string, 0, len(rows))
 				for _, r := range rows {
 					current := ""
@@ -233,7 +238,7 @@ func newCmdShow(f *factory.Factory) *cobra.Command {
 		Example: "# Show profile test with its client ID and secret status\n" +
 			"  100x profile show test",
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeProfileNames,
+		ValidArgsFunction: CompleteNames,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -266,7 +271,7 @@ func newCmdUse(f *factory.Factory) *cobra.Command {
 		Example: "# Make one profile the default for future commands\n" +
 			"  100x profile use test",
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeProfileNames,
+		ValidArgsFunction: CompleteNames,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -287,33 +292,47 @@ func newCmdUse(f *factory.Factory) *cobra.Command {
 	}
 }
 
-// completeProfileNames lists configured profile names for tab completion
+// CompleteNames lists configured profile names for tab completion
 // without making any network call.
-func completeProfileNames(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+func CompleteNames(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
+	return completeNames(toComplete)
+}
+
+// CompleteNameFlag lists profile names for the global --profile flag.
+func CompleteNameFlag(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return completeNames(toComplete)
+}
+
+func completeNames(toComplete string) ([]string, cobra.ShellCompDirective) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 	out := make([]string, 0, len(cfg.Profiles))
 	for name := range cfg.Profiles {
+		if toComplete != "" && !strings.HasPrefix(name, toComplete) {
+			continue
+		}
 		out = append(out, name)
 	}
+	sort.Strings(out)
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
 func newCmdRemove(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
-		Use:   "remove <name>",
-		Short: "Delete a profile (and its secret)",
+		Use:     "remove <name>",
+		Aliases: []string{"rm"},
+		Short:   "Delete a profile (and its secret)",
 		Example: "# Remove one profile with confirmation\n" +
 			"  100x profile remove test\n\n" +
 			"# Remove one profile without the confirmation prompt\n" +
 			"  100x profile remove test --yes",
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeProfileNames,
+		ValidArgsFunction: CompleteNames,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -337,7 +356,13 @@ func newCmdRemove(f *factory.Factory) *cobra.Command {
 			if err := config.Save(cfg); err != nil {
 				return err
 			}
-			return credential.Default().Delete(args[0])
+			if err := credential.Default().Delete(args[0]); err != nil {
+				return err
+			}
+			payload := currentProfile{Name: args[0]}
+			return f.IO.Render(payload, func() error {
+				return f.IO.Resultln("removed profile", args[0])
+			})
 		},
 	}
 }

@@ -4,15 +4,12 @@ package main
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/root"
 	"github.com/vika2603/100x-cli/internal/exit"
-	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 func main() {
@@ -37,46 +34,7 @@ func run() int {
 		// Downstream consumer closed its stdin; nothing more to write.
 		return exit.OK
 	}
-	code, codeString := classify(err)
+	code, codeString := exit.Classify(err)
 	emitErr(err, code, codeString)
 	return code
-}
-
-// classify maps an error to (exit code, stable string code). The string
-// code is the closed set callers may branch on programmatically; the
-// numeric code is the process exit status.
-func classify(err error) (int, string) {
-	if err == nil {
-		return exit.OK, "ok"
-	}
-	var coded *exit.CodedError
-	if errors.As(err, &coded) {
-		return coded.Code, coded.Stable
-	}
-	if errors.Is(err, prompt.ErrDestructiveNoTTY) {
-		return exit.Aborted, "cancelled"
-	}
-	if futures.IsAuth(err) {
-		return exit.Auth, "auth"
-	}
-	if futures.IsRateLimited(err) {
-		return exit.RateLimited, "rate_limited"
-	}
-	if futures.IsServer(err) {
-		return exit.Network, "server"
-	}
-	if futures.IsBusiness(err) {
-		return exit.Business, "business"
-	}
-	if errors.Is(err, context.Canceled) {
-		return exit.Aborted, "cancelled"
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return exit.Network, "network"
-	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return exit.Network, "network"
-	}
-	return exit.Generic, "generic"
 }

@@ -2,13 +2,14 @@ package position
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -34,7 +35,8 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 			"  100x futures position add BTCUSDT --position-id <position-id> --price 70000 --size 0.001\n\n" +
 			"# Add size 0.001 to one BTCUSDT position at market\n" +
 			"  100x futures position add BTCUSDT --position-id <position-id> --type market --size 0.001",
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			return runAdd(cmd.Context(), opts)
@@ -45,16 +47,27 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Price, "price", "", "limit price; required for limit orders")
 	c.Flags().StringVar(&opts.Size, "size", "", "quantity to add")
 	_ = c.MarkFlagRequired("size")
-	_ = c.RegisterFlagCompletionFunc("type", cobra.FixedCompletions([]string{"limit", "market"}, cobra.ShellCompDirectiveNoFileComp))
+	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
+	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
+	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }
 
 func runAdd(ctx context.Context, opts *AddOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveID("position-id", opts.PositionID); opts.PositionID != "" && err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
+		return err
+	}
+	if err := clierr.PositiveNumber("--price", opts.Price); err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" {
-			return fmt.Errorf("--price is required for limit position add")
+			return clierr.Usagef("--price is required for limit position add")
 		}
 		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
 		if err != nil {
@@ -100,5 +113,5 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 			})
 		})
 	}
-	return fmt.Errorf("unknown --type %q (want limit|market)", opts.Type)
+	return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
 }

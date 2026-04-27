@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vika2603/100x-cli/api/futures"
+	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
+	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -28,7 +30,8 @@ func NewCmdShow(f *factory.Factory) *cobra.Command {
 		Short: "Show one order's full record",
 		Example: "# Show one BTCUSDT order with status, SL/TP, client id, and timestamps\n" +
 			"  100x futures order show BTCUSDT <order-id>",
-		Args: cobra.ExactArgs(2),
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.OpenOrderArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]
 			opts.OrderID = args[1]
@@ -40,6 +43,9 @@ func NewCmdShow(f *factory.Factory) *cobra.Command {
 
 func runShow(ctx context.Context, opts *ShowOptions) error {
 	f := opts.Factory
+	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
+		return err
+	}
 	resp, err := f.Client.Order.OrderDetail(ctx, futures.OrderDetailReq{
 		Market: opts.Symbol, OrderID: opts.OrderID,
 	})

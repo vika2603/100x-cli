@@ -11,6 +11,7 @@ require (
 	github.com/mattn/go-isatty v0.0.21
 	github.com/spf13/cobra v1.10.2
 	github.com/zalando/go-keyring v0.2.8
+	go.uber.org/mock v0.6.0
 )
 
 require (

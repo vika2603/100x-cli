@@ -10,8 +10,9 @@ import (
 // NewCmdPosition returns the `position` group.
 func NewCmdPosition(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "position",
-		Short: "Open-position operations",
+		Use:     "position",
+		Aliases: []string{"pos"},
+		Short:   "Open-position operations",
 		Long: "Inspect and manage open positions.\n\n" +
 			"Use `position list` and `position history` to inspect current and closed positions.\n" +
 			"Use `position add` and `position close` to trade against an existing position. Use\n" +
