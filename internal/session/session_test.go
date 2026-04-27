@@ -110,7 +110,9 @@ func TestLoadPrivateHappyPath(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := credential.Default().Save("test", "secret-test"); err != nil {
+	if err := credential.SaveSecret("id-test", credential.Envelope{
+		ClientID: "id-test", Secret: "secret-test",
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -146,7 +148,9 @@ func TestLoadPrivateMissingEndpointReturnsErrNoEndpoint(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := credential.Default().Save("live", "secret-live"); err != nil {
+	if err := credential.SaveSecret("id-live", credential.Envelope{
+		ClientID: "id-live", Secret: "secret-live",
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -185,7 +189,9 @@ func TestLoadPrivateRespectsEnvProfileFallback(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := credential.Default().Save("test", "secret-test"); err != nil {
+	if err := credential.SaveSecret("id-test", credential.Envelope{
+		ClientID: "id-test", Secret: "secret-test",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("E100X_PROFILE", "test")

@@ -1,8 +1,10 @@
 // Package config holds the CLI's profile model and TOML persistence layer.
 //
 // Secrets are deliberately not part of Profile: only ClientID is stored on
-// disk; the matching ClientKey lives in the OS keychain (or chmod-600
-// fallback) and is loaded via internal/credential.
+// disk; the matching secret envelope (JSON) lives in the OS keychain (or
+// chmod-600 fallback) keyed by ClientID and is loaded via
+// internal/credential. Two profiles that share a ClientID share the same
+// secret entry, which matches the API model where ClientID is the identity.
 package config
 
 import (
@@ -26,8 +28,8 @@ var ErrNoEndpoint = errors.New("no API endpoint configured")
 // Profile is one named credential binding.
 //
 // Secrets are NOT stored in the TOML file: only ClientID is persisted; the
-// matching ClientKey lives in the OS keychain (or chmod 600 fallback file)
-// keyed by the profile name.
+// matching secret envelope (JSON) lives in the OS keychain (or chmod 600
+// fallback file) keyed by ClientID.
 type Profile struct {
 	ClientID string `toml:"client_id"`
 }

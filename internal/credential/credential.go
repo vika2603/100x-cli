@@ -1,22 +1,36 @@
-// Package credential stores per-profile API secrets, preferring the OS
-// keychain and falling back to a chmod-600 file.
+// Package credential stores API secrets keyed by client_id, preferring the
+// OS keychain and falling back to a chmod-600 file.
+//
+// client_id is the API identity — two profiles that point at the same
+// client_id naturally share one secret. Every entry is a JSON Envelope so
+// future fields (key type, rotation timestamps, etc.) can be added without
+// rewriting the storage layer.
 package credential
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 )
 
 // ErrNotFound is returned when the requested credential is missing from every backend.
 var ErrNotFound = errors.New("credential not found")
 
-// Store reads and writes profile credentials.
+// Envelope is the on-disk shape of one stored secret.
+type Envelope struct {
+	ClientID  string    `json:"client_id"`
+	Secret    string    `json:"secret"`
+	Type      string    `json:"type,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Store reads and writes opaque blobs keyed by client_id. Backends do not
+// know or care about the JSON schema inside.
 type Store interface {
-	// Save persists the secret for `profile`.
-	Save(profile, secret string) error
-	// Load returns the secret for `profile` or ErrNotFound.
-	Load(profile string) (string, error)
-	// Delete removes the secret for `profile`. Missing values are a no-op.
-	Delete(profile string) error
+	Save(clientID string, blob []byte) error
+	Load(clientID string) ([]byte, error)
+	Delete(clientID string) error
 }
 
 // Default returns the platform-preferred Store.
@@ -31,14 +45,57 @@ func Default() Store {
 	}
 }
 
+// SaveSecret encodes env as JSON and writes it under clientID via the default Store.
+func SaveSecret(clientID string, env Envelope) error {
+	if clientID == "" {
+		return errors.New("save credential: empty client_id")
+	}
+	if env.ClientID == "" {
+		env.ClientID = clientID
+	}
+	if env.CreatedAt.IsZero() {
+		env.CreatedAt = time.Now().UTC()
+	}
+	blob, err := json.Marshal(env)
+	if err != nil {
+		return fmt.Errorf("encode credential envelope: %w", err)
+	}
+	return Default().Save(clientID, blob)
+}
+
+// LoadSecret reads and decodes the Envelope stored under clientID. Returns
+// ErrNotFound when no backend has the entry.
+func LoadSecret(clientID string) (Envelope, error) {
+	if clientID == "" {
+		return Envelope{}, ErrNotFound
+	}
+	blob, err := Default().Load(clientID)
+	if err != nil {
+		return Envelope{}, err
+	}
+	var env Envelope
+	if err := json.Unmarshal(blob, &env); err != nil {
+		return Envelope{}, fmt.Errorf("decode credential envelope: %w", err)
+	}
+	return env, nil
+}
+
+// DeleteSecret removes the entry under clientID. Missing entries are a no-op.
+func DeleteSecret(clientID string) error {
+	if clientID == "" {
+		return nil
+	}
+	return Default().Delete(clientID)
+}
+
 type chain struct {
 	stores []Store
 }
 
-func (c *chain) Save(profile, secret string) error {
+func (c *chain) Save(clientID string, blob []byte) error {
 	var lastErr error
 	for _, s := range c.stores {
-		if err := s.Save(profile, secret); err != nil {
+		if err := s.Save(clientID, blob); err != nil {
 			lastErr = err
 			continue
 		}
@@ -50,22 +107,34 @@ func (c *chain) Save(profile, secret string) error {
 	return lastErr
 }
 
-func (c *chain) Load(profile string) (string, error) {
+func (c *chain) Load(clientID string) ([]byte, error) {
 	for _, s := range c.stores {
-		v, err := s.Load(profile)
+		v, err := s.Load(clientID)
 		if err == nil {
 			return v, nil
 		}
 		if !errors.Is(err, ErrNotFound) {
-			return "", err
+			return nil, err
 		}
 	}
-	return "", ErrNotFound
+	return nil, ErrNotFound
 }
 
-func (c *chain) Delete(profile string) error {
+func (c *chain) Delete(clientID string) error {
+	var lastErr error
+	deleted := false
 	for _, s := range c.stores {
-		_ = s.Delete(profile)
+		if err := s.Delete(clientID); err != nil {
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			lastErr = err
+			continue
+		}
+		deleted = true
+	}
+	if !deleted && lastErr != nil {
+		return lastErr
 	}
 	return nil
 }

@@ -11,6 +11,25 @@ import (
 	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
+// clientIDSharedWithOthers reports whether any profile other than
+// excludeName references clientID. Two profiles may legitimately share one
+// client_id (the API identity) and therefore one secret entry; only the
+// last referrer's removal triggers the credential delete.
+func clientIDSharedWithOthers(cfg *config.Config, clientID, excludeName string) bool {
+	if clientID == "" {
+		return false
+	}
+	for name, p := range cfg.Profiles {
+		if name == excludeName {
+			continue
+		}
+		if p.ClientID == clientID {
+			return true
+		}
+	}
+	return false
+}
+
 func newCmdRemove(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:     "remove <name>",
@@ -27,10 +46,11 @@ func newCmdRemove(f *factory.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, ok := cfg.Profiles[args[0]]; !ok {
+			target, ok := cfg.Profiles[args[0]]
+			if !ok {
 				return fmt.Errorf("profile %q not found", args[0])
 			}
-			ok, err := prompt.ConfirmDestructive(
+			ok, err = prompt.ConfirmDestructive(
 				fmt.Sprintf("Delete profile %q and its stored secret?", args[0]), f.Yes)
 			if err != nil {
 				return err
@@ -38,14 +58,20 @@ func newCmdRemove(f *factory.Factory) *cobra.Command {
 			if !ok {
 				return nil
 			}
+			// Delete the secret first when this profile holds the only
+			// reference. A failure here aborts before config.toml is
+			// mutated, so the user can retry the same `remove` without
+			// the profile vanishing first.
+			if target.ClientID != "" && !clientIDSharedWithOthers(cfg, target.ClientID, args[0]) {
+				if err := credential.DeleteSecret(target.ClientID); err != nil {
+					return err
+				}
+			}
 			delete(cfg.Profiles, args[0])
 			if cfg.Default == args[0] {
 				cfg.Default = ""
 			}
 			if err := config.Save(cfg); err != nil {
-				return err
-			}
-			if err := credential.Default().Delete(args[0]); err != nil {
 				return err
 			}
 			payload := currentProfile{Name: args[0]}

@@ -62,20 +62,64 @@ func runAdd(opts *AddOptions) (profileDetail, error) {
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]config.Profile{}
 	}
+	prev, hadPrev := cfg.Profiles[opts.Name]
+	rollback, err := snapshotForRollback(opts.ClientID)
+	if err != nil {
+		return profileDetail{}, err
+	}
+	if err := credential.SaveSecret(opts.ClientID, credential.Envelope{
+		ClientID: opts.ClientID, Secret: opts.Secret,
+	}); err != nil {
+		return profileDetail{}, err
+	}
 	cfg.Profiles[opts.Name] = config.Profile{ClientID: opts.ClientID}
 	if opts.SetDefault || cfg.Default == "" {
 		cfg.Default = opts.Name
 	}
 	if err := config.Save(cfg); err != nil {
+		rollback()
 		return profileDetail{}, err
 	}
-	if err := credential.Default().Save(opts.Name, opts.Secret); err != nil {
-		return profileDetail{}, err
+	// If this profile was rebound to a new client_id, drop the old entry
+	// when no other profile still points at it. The previous entry is
+	// reachable by its (user-known) client_id, so this is a tidy-up rather
+	// than a recovery requirement.
+	if hadPrev && prev.ClientID != "" && prev.ClientID != opts.ClientID &&
+		!clientIDInUse(cfg, prev.ClientID) {
+		_ = credential.DeleteSecret(prev.ClientID)
 	}
 	return profileDetail{
 		Name: opts.Name, ClientID: opts.ClientID,
 		Current: cfg.Default == opts.Name, SecretStored: true,
 	}, nil
+}
+
+// snapshotForRollback captures the current secret stored under clientID
+// (if any) and returns a closure that restores it. Used to undo a
+// SaveSecret that was followed by a config.Save failure: a no-op on
+// success, the only consumer is the failure branch.
+func snapshotForRollback(clientID string) (func(), error) {
+	prior, err := credential.LoadSecret(clientID)
+	switch {
+	case err == nil:
+		return func() { _ = credential.SaveSecret(clientID, prior) }, nil
+	case errors.Is(err, credential.ErrNotFound):
+		return func() { _ = credential.DeleteSecret(clientID) }, nil
+	default:
+		return nil, err
+	}
+}
+
+// clientIDInUse reports whether any profile currently in cfg references
+// the given client_id. Two profiles may legitimately share one client_id
+// (the API identity) and therefore one secret.
+func clientIDInUse(cfg *config.Config, clientID string) bool {
+	for _, p := range cfg.Profiles {
+		if p.ClientID == clientID {
+			return true
+		}
+	}
+	return false
 }
 
 func fillAddInputs(opts *AddOptions) error {

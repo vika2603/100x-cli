@@ -81,7 +81,7 @@ func Load(opts LoadOptions) (Session, error) {
 	if err != nil {
 		return Session{}, err
 	}
-	secret, err := credential.Default().Load(name)
+	env, err := credential.LoadSecret(p.ClientID)
 	if err != nil {
 		return Session{}, fmt.Errorf("load credentials for profile %q: %w", name, err)
 	}
@@ -89,7 +89,7 @@ func Load(opts LoadOptions) (Session, error) {
 		Client: futures.New(futures.Options{
 			Endpoint:   endpoint,
 			ClientID:   p.ClientID,
-			ClientKey:  secret,
+			ClientKey:  env.Secret,
 			HTTPClient: httpClient,
 		}),
 		Profile:     p,

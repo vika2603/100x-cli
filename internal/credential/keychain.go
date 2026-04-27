@@ -10,22 +10,25 @@ const keychainService = "100x-cli"
 
 type keychainStore struct{}
 
-func (keychainStore) Save(profile, secret string) error {
-	return keyring.Set(keychainService, profile, secret)
+func (keychainStore) Save(clientID string, blob []byte) error {
+	return keyring.Set(keychainService, clientID, string(blob))
 }
 
-func (keychainStore) Load(profile string) (string, error) {
-	v, err := keyring.Get(keychainService, profile)
+func (keychainStore) Load(clientID string) ([]byte, error) {
+	v, err := keyring.Get(keychainService, clientID)
 	if errors.Is(err, keyring.ErrNotFound) {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return v, err
+	if err != nil {
+		return nil, err
+	}
+	return []byte(v), nil
 }
 
-func (keychainStore) Delete(profile string) error {
-	err := keyring.Delete(keychainService, profile)
+func (keychainStore) Delete(clientID string) error {
+	err := keyring.Delete(keychainService, clientID)
 	if errors.Is(err, keyring.ErrNotFound) {
-		return nil
+		return ErrNotFound
 	}
 	return err
 }
