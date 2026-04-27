@@ -89,7 +89,7 @@ func Load(opts LoadOptions) (Session, error) {
 		Client: futures.New(futures.Options{
 			Endpoint:   endpoint,
 			ClientID:   p.ClientID,
-			ClientKey:  env.Secret,
+			ClientKey:  env.ClientKey,
 			HTTPClient: httpClient,
 		}),
 		Profile:     p,

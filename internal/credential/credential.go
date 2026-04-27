@@ -17,10 +17,10 @@ import (
 // ErrNotFound is returned when the requested credential is missing from every backend.
 var ErrNotFound = errors.New("credential not found")
 
-// Envelope is the on-disk shape of one stored secret.
+// Envelope is the on-disk shape of one stored credential.
 type Envelope struct {
 	ClientID  string    `json:"client_id"`
-	Secret    string    `json:"secret"`
+	ClientKey string    `json:"client_key"`
 	Type      string    `json:"type,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -56,7 +56,7 @@ func SaveSecret(clientID string, env Envelope) error {
 	if env.CreatedAt.IsZero() {
 		env.CreatedAt = time.Now().UTC()
 	}
-	blob, err := json.Marshal(env)
+	blob, err := json.Marshal(env) // #nosec G117 -- marshaling the credential envelope IS the storage path
 	if err != nil {
 		return fmt.Errorf("encode credential envelope: %w", err)
 	}

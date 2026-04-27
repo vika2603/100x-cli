@@ -16,7 +16,7 @@ import (
 type AddOptions struct {
 	Name       string
 	ClientID   string
-	Secret     string
+	ClientKey  string
 	SetDefault bool
 }
 
@@ -26,8 +26,8 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		Use:   "add <name>",
 		Short: "Add or update a profile",
 		Long: "Add or update one credential profile.\n\n" +
-			"Each profile is a name plus a client ID and its secret. The secret is prompted for when --secret is omitted and is never echoed back.",
-		Example: "# Add profile test and prompt for its secret\n" +
+			"Each profile is a name plus a client ID and its client key. The client key is prompted for when --client-key is omitted and is never echoed back.",
+		Example: "# Add profile test and prompt for its client key\n" +
 			"  100x profile add test --client-id <CID>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -43,7 +43,7 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "Client ID for this profile")
-	c.Flags().StringVar(&opts.Secret, "secret", "", "Client secret; prompt when omitted")
+	c.Flags().StringVar(&opts.ClientKey, "client-key", "", "Client key; prompt when omitted")
 	c.Flags().BoolVar(&opts.SetDefault, "default", false, "Make this the default profile")
 	return c
 }
@@ -68,7 +68,7 @@ func runAdd(opts *AddOptions) (profileDetail, error) {
 		return profileDetail{}, err
 	}
 	if err := credential.SaveSecret(opts.ClientID, credential.Envelope{
-		ClientID: opts.ClientID, Secret: opts.Secret,
+		ClientID: opts.ClientID, ClientKey: opts.ClientKey,
 	}); err != nil {
 		return profileDetail{}, err
 	}
@@ -133,17 +133,17 @@ func fillAddInputs(opts *AddOptions) error {
 	if opts.ClientID == "" {
 		return errors.New("profile add: client-id is required")
 	}
-	if opts.Secret == "" {
-		opts.Secret, err = prompt.Secret("API secret")
+	if opts.ClientKey == "" {
+		opts.ClientKey, err = prompt.Secret("Client key")
 		if errors.Is(err, prompt.ErrNoTTY) {
-			return errors.New("profile add: --secret is required when stdin is not a terminal")
+			return errors.New("profile add: --client-key is required when stdin is not a terminal")
 		}
 		if err != nil {
 			return err
 		}
 	}
-	if opts.Secret == "" {
-		return errors.New("profile add: secret is required")
+	if opts.ClientKey == "" {
+		return errors.New("profile add: client-key is required")
 	}
 	return nil
 }

@@ -293,7 +293,7 @@ func TestRequiredFlagPointsToSubcommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-test", credential.Envelope{
-		ClientID: "id-test", Secret: "secret-test",
+		ClientID: "id-test", ClientKey: "secret-test",
 	}); err != nil {
 		t.Fatal(err)
 	}

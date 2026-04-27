@@ -49,15 +49,15 @@ func TestAddRebindsClientIDDropsOldSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-old", credential.Envelope{
-		ClientID: "id-old", Secret: "old-secret",
+		ClientID: "id-old", ClientKey: "old-secret",
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	if _, err := runAdd(&AddOptions{
-		Name:     "live",
-		ClientID: "id-new",
-		Secret:   "new-secret",
+		Name:      "live",
+		ClientID:  "id-new",
+		ClientKey: "new-secret",
 	}); err != nil {
 		t.Fatalf("runAdd: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestAddRebindsClientIDDropsOldSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadSecret(id-new): %v", err)
 	}
-	if env.Secret != "new-secret" {
+	if env.ClientKey != "new-secret" {
 		t.Errorf("envelope=%+v want secret=new-secret", env)
 	}
 	if _, err := credential.LoadSecret("id-old"); !errors.Is(err, credential.ErrNotFound) {
@@ -96,15 +96,15 @@ func TestAddRebindKeepsOtherProfilesSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-old", credential.Envelope{
-		ClientID: "id-old", Secret: "old-secret",
+		ClientID: "id-old", ClientKey: "old-secret",
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	if _, err := runAdd(&AddOptions{
-		Name:     "live",
-		ClientID: "id-new",
-		Secret:   "new-secret",
+		Name:      "live",
+		ClientID:  "id-new",
+		ClientKey: "new-secret",
 	}); err != nil {
 		t.Fatalf("runAdd: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestAddRestoresClientIDSecretWhenConfigSaveFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-shared", credential.Envelope{
-		ClientID: "id-shared", Secret: "old-secret",
+		ClientID: "id-shared", ClientKey: "old-secret",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -137,9 +137,9 @@ func TestAddRestoresClientIDSecretWhenConfigSaveFails(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(config.Dir(), 0o700) })
 
 	_, err := runAdd(&AddOptions{
-		Name:     "live",
-		ClientID: "id-shared",
-		Secret:   "new-secret",
+		Name:      "live",
+		ClientID:  "id-shared",
+		ClientKey: "new-secret",
 	})
 	if err == nil {
 		t.Fatal("runAdd succeeded despite unwritable config dir")
@@ -149,8 +149,8 @@ func TestAddRestoresClientIDSecretWhenConfigSaveFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadSecret(id-shared): %v", err)
 	}
-	if env.Secret != "old-secret" {
-		t.Fatalf("secret=%q want restored old-secret", env.Secret)
+	if env.ClientKey != "old-secret" {
+		t.Fatalf("secret=%q want restored old-secret", env.ClientKey)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestRemoveDeletesSecretBeforeConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-live", credential.Envelope{
-		ClientID: "id-live", Secret: "secret",
+		ClientID: "id-live", ClientKey: "secret",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestRemoveSharedClientIDKeepsBlob(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-shared", credential.Envelope{
-		ClientID: "id-shared", Secret: "secret",
+		ClientID: "id-shared", ClientKey: "secret",
 	}); err != nil {
 		t.Fatal(err)
 	}

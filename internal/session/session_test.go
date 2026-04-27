@@ -111,7 +111,7 @@ func TestLoadPrivateHappyPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-test", credential.Envelope{
-		ClientID: "id-test", Secret: "secret-test",
+		ClientID: "id-test", ClientKey: "secret-test",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestLoadPrivateMissingEndpointReturnsErrNoEndpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-live", credential.Envelope{
-		ClientID: "id-live", Secret: "secret-live",
+		ClientID: "id-live", ClientKey: "secret-live",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestLoadPrivateRespectsEnvProfileFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := credential.SaveSecret("id-test", credential.Envelope{
-		ClientID: "id-test", Secret: "secret-test",
+		ClientID: "id-test", ClientKey: "secret-test",
 	}); err != nil {
 		t.Fatal(err)
 	}
