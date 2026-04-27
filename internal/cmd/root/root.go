@@ -98,7 +98,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 
 		// --timeout bounds the whole command, including retries.
 		if gf.timeout > 0 {
-			ctx, cancel := context.WithTimeout(c.Context(), gf.timeout)
+			ctx, cancel := context.WithTimeout(c.Context(), gf.timeout) //nolint:gosec // cancel runs via cobra.OnFinalize below
 			c.SetContext(ctx)
 			cobra.OnFinalize(cancel)
 		}

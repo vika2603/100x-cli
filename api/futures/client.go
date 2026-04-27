@@ -24,6 +24,7 @@ type Doer interface {
 // RetryPolicy controls retry on read (GET) requests. See transport.RetryPolicy.
 type RetryPolicy = transport.RetryPolicy
 
+// NoRetry disables retry for a single call when attached via WithRetryPolicy.
 var NoRetry = transport.NoRetry
 
 // WithRetryPolicy attaches a per-call RetryPolicy to ctx. Writes are not affected.
