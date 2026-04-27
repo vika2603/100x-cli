@@ -15,7 +15,7 @@ import (
 const helpTemplate = `{{with or .Long .Short}}{{. | trimTrailingWhitespaces}}{{end}}
 
 {{section "Usage"}}:
-  {{if .Runnable}}{{.UseLine}}{{else}}{{.CommandPath}}{{if or .HasAvailableLocalFlags .HasAvailableInheritedFlags}} [flags]{{end}}{{if .HasAvailableSubCommands}} <command>{{end}}{{end}}
+  {{.UseLine}}{{if .HasAvailableSubCommands}} <command>{{end}}
 {{if .Aliases}}
 {{section "Aliases"}}:
   {{join .Aliases ", "}}
@@ -55,6 +55,15 @@ func configureHelp(cmd *cobra.Command) {
 func applyHelp(cmd *cobra.Command) {
 	cmd.Flags().SortFlags = false
 	cmd.PersistentFlags().SortFlags = false
+	if cmd.HasSubCommands() && !cmd.Runnable() {
+		cmd.Args = cobra.NoArgs
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			if err := cobra.NoArgs(c, args); err != nil {
+				return err
+			}
+			return c.Help()
+		}
+	}
 	cmd.SetHelpFunc(func(c *cobra.Command, _ []string) {
 		if err := renderHelp(c.OutOrStdout(), c); err != nil {
 			_, _ = fmt.Fprintln(c.ErrOrStderr(), err)

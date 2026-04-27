@@ -47,6 +47,9 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
+	if resp == nil {
+		resp = []futures.PendingPositionDetail{}
+	}
 	return f.IO.Render(resp, func() error { return printOpen(f.IO, resp) })
 }
 

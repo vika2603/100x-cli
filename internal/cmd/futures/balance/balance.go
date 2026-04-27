@@ -65,6 +65,9 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
+	if resp == nil {
+		resp = []futures.AssetDetailItem{}
+	}
 	if opts.Currency != "" {
 		currency := strings.ToUpper(opts.Currency)
 		filtered := resp[:0]

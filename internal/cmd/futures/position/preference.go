@@ -12,7 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/output"
 )
 
-// PreferenceOptions captures the flag-bound state of `position preference`.
+// PreferenceOptions captures the flag-bound state of `futures preference`.
 type PreferenceOptions struct {
 	Symbol   string
 	Leverage string
@@ -21,7 +21,7 @@ type PreferenceOptions struct {
 	Factory *factory.Factory
 }
 
-// NewCmdPreference builds the `position preference` cobra command.
+// NewCmdPreference builds the `futures preference` cobra command.
 func NewCmdPreference(f *factory.Factory) *cobra.Command {
 	opts := &PreferenceOptions{Factory: f}
 	c := &cobra.Command{
@@ -30,11 +30,11 @@ func NewCmdPreference(f *factory.Factory) *cobra.Command {
 		Long: "Read or update per-market preferences.\n\n" +
 			"When updating only one field, the CLI preserves the other field automatically because the gateway expects both values together.",
 		Example: "# Show the current leverage and margin mode for BTCUSDT\n" +
-			"  100x futures position preference BTCUSDT\n\n" +
+			"  100x futures preference BTCUSDT\n\n" +
 			"# Set BTCUSDT leverage to 25 and preserve the current mode\n" +
-			"  100x futures position preference BTCUSDT --leverage 25\n\n" +
+			"  100x futures preference BTCUSDT --leverage 25\n\n" +
 			"# Set BTCUSDT leverage to 25 and mode to CROSS\n" +
-			"  100x futures position preference BTCUSDT --leverage 25 --mode CROSS",
+			"  100x futures preference BTCUSDT --leverage 25 --mode CROSS",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Symbol = args[0]

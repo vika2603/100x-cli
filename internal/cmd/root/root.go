@@ -57,13 +57,15 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		Short: "100x futures-trading CLI",
 		Long: "Use 100x from the terminal for market data, balances, orders, triggers, and positions.\n\n" +
 			"Private commands read credentials from a named profile. A profile stores user identity\n" +
-			"and env selection; endpoint settings live under [env.<name>] in config. Public market\n" +
-			"commands can run without private credentials as long as an endpoint is configured.\n\n" +
+			"only. The API endpoint is built into the CLI, and E100X_ENDPOINT overrides it per\n" +
+			"process. Public market commands can run without private credentials.\n\n" +
 			"Human output is designed for terminal use. Add --json for machine-readable output, and\n" +
 			"use --jq to filter that JSON when scripting. Use --help on any subcommand to inspect\n" +
 			"required arguments, default values, examples, and command-specific notes.",
-		Example: "# Add a test profile named test, using env test and storing the secret in the keychain\n" +
-			"  100x profile add test --env test --client-id <CID>\n\n" +
+		Example: "# Add a test profile named test and store the secret in the keychain\n" +
+			"  100x profile add test --client-id <CID>\n\n" +
+			"# Run one command against a custom endpoint without changing config\n" +
+			"  E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT\n\n" +
 			"# Show the latest ticker-style state for BTCUSDT\n" +
 			"  100x futures market state BTCUSDT\n\n" +
 			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
@@ -88,7 +90,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	_ = cmd.RegisterFlagCompletionFunc("color", cobra.FixedCompletions([]string{"auto", "always", "never"}, cobra.ShellCompDirectiveNoFileComp))
 
 	cmd.PersistentPreRunE = func(c *cobra.Command, _ []string) error {
-		if isCredentialFreeCmd(c) {
+		if isCredentialFreeCmd(c) || c.HasSubCommands() {
 			r, err := newRenderer(gf)
 			if err != nil {
 				return err
@@ -190,8 +192,7 @@ func summarizeNetworkCause(err error) string {
 }
 
 // isCredentialFreeCmd reports whether c is in a subtree that does not need
-// a Factory.Client. profile add / list / use / show / remove and completion
-// run before any credentials exist.
+// a Factory.Client.
 func isCredentialFreeCmd(c *cobra.Command) bool {
 	for cur := c; cur != nil; cur = cur.Parent() {
 		switch cur.Name() {
@@ -273,7 +274,7 @@ func populate(f *factory.Factory, gf *globalFlags) error {
 	if err != nil {
 		return fmt.Errorf("load credentials for profile %q: %w", name, err)
 	}
-	endpoint, err := config.EndpointForProfile(cfg, p)
+	endpoint, err := config.EndpointForProfile(p)
 	if err != nil {
 		return fmt.Errorf("resolve endpoint for profile %q: %w", name, err)
 	}
@@ -302,25 +303,8 @@ func populatePublic(f *factory.Factory, gf *globalFlags) error {
 		return nil
 	}
 
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	name, p, err := config.Resolve(cfg, gf.profile)
-	if err != nil {
-		if errors.Is(err, config.ErrNoProfile) {
-			return fmt.Errorf("no profile configured: run `100x profile add`")
-		}
-		return err
-	}
-	endpoint, err := config.EndpointForProfile(cfg, p)
-	if err != nil {
-		return fmt.Errorf("resolve endpoint for profile %q: %w", name, err)
-	}
-	f.ProfileName = name
-	f.Profile = p
 	f.Client = futures.New(futures.Options{
-		Endpoint:   endpoint,
+		Endpoint:   config.Endpoint(),
 		HTTPClient: &http.Client{Timeout: gf.timeout},
 	})
 	return nil

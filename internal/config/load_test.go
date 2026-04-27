@@ -15,20 +15,15 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 
 	c := &Config{
 		Default: "live",
-		Env: map[string]EnvConfig{
-			"live": {Endpoint: "https://api.example.com"},
-			"test": {Endpoint: "https://test.example.com"},
-		},
 		Profiles: map[string]Profile{
-			"live": {ClientID: "abc", Env: "live"},
-			"test": {ClientID: "xyz", Env: "test"},
+			"live": {ClientID: "abc"},
+			"test": {ClientID: "xyz"},
 		},
 	}
 	if err := Save(c); err != nil {
 		t.Fatal(err)
 	}
 
-	// File mode must be 0600.
 	info, err := os.Stat(filepath.Join(dir, AppName, "config.toml"))
 	if err != nil {
 		t.Fatal(err)
@@ -40,11 +35,8 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "[env.live]") {
-		t.Fatalf("config TOML must encode env settings under [env.<name>]:\n%s", string(data))
-	}
-	if strings.Contains(string(data), "[endpoints]") {
-		t.Fatalf("config TOML must not encode legacy [endpoints]:\n%s", string(data))
+	if strings.Contains(string(data), "endpoint") || strings.Contains(string(data), "[env.") {
+		t.Fatalf("config TOML must not encode endpoint/env settings:\n%s", string(data))
 	}
 
 	got, err := Load()
@@ -54,19 +46,8 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if got.Default != "live" {
 		t.Errorf("Default=%q want live", got.Default)
 	}
-	if got.Env["live"].Endpoint != "https://api.example.com" {
-		t.Errorf("Env[live].Endpoint=%q want https://api.example.com", got.Env["live"].Endpoint)
-	}
 	if len(got.Profiles) != 2 {
 		t.Errorf("len(Profiles)=%d want 2", len(got.Profiles))
-	}
-	profile := got.Profiles["test"]
-	endpoint, err := EndpointForProfile(got, &profile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if endpoint != "https://test.example.com" {
-		t.Errorf("EndpointForProfile(test)=%q want https://test.example.com", endpoint)
 	}
 }
 
@@ -84,9 +65,6 @@ func TestLoadMissingFile(t *testing.T) {
 	}
 	if got.Profiles == nil {
 		t.Error("Profiles must be non-nil")
-	}
-	if got.Env == nil {
-		t.Error("Env must be non-nil")
 	}
 }
 
@@ -132,38 +110,13 @@ func TestResolve(t *testing.T) {
 }
 
 func TestEndpointResolution(t *testing.T) {
-	c := &Config{
-		Env: map[string]EnvConfig{
-			"live": {Endpoint: "https://live.example.com"},
-			"test": {Endpoint: "https://override.example.com"},
-		},
+	t.Setenv("E100X_ENDPOINT", "")
+	if got := Endpoint(); got != DefaultEndpoint {
+		t.Errorf("Endpoint(default)=%q want %q", got, DefaultEndpoint)
 	}
 
-	got, err := EndpointForEnv(c, " live ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "https://live.example.com" {
-		t.Errorf("EndpointForEnv(live)=%q want https://live.example.com", got)
-	}
-
-	got, err = EndpointForEnv(c, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "https://override.example.com" {
-		t.Errorf("EndpointForEnv(test)=%q want https://override.example.com", got)
-	}
-
-	got, err = EndpointForEnv(&Config{}, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "https://api.lyantechinnovation.com/" {
-		t.Errorf("EndpointForEnv(empty)=%q want built-in test endpoint", got)
-	}
-
-	if _, err := EndpointForEnv(&Config{}, "live"); err == nil {
-		t.Fatal("expected missing live endpoint error")
+	t.Setenv("E100X_ENDPOINT", "https://env.example.com")
+	if got := Endpoint(); got != "https://env.example.com" {
+		t.Errorf("Endpoint(env)=%q want https://env.example.com", got)
 	}
 }

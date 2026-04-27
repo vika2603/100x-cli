@@ -52,6 +52,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if resp == nil {
+				resp = []futures.MarketItem{}
+			}
 			if !includeUnavailable {
 				filtered := resp[:0]
 				for _, m := range resp {
@@ -113,6 +116,9 @@ func runState(ctx context.Context, opts *StateOptions) error {
 		resp, err := f.Client.Market.MarketStateAll(ctx, futures.MarketStateAllReq{})
 		if err != nil {
 			return err
+		}
+		if resp == nil {
+			resp = []futures.MarketStateItem{}
 		}
 		return f.IO.Render(resp, func() error { return printMarketStates(f.IO, resp) })
 	}
@@ -213,6 +219,9 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if resp == nil {
+				resp = []futures.MarketDealItem{}
+			}
 			resp = limitSlice(resp, limit)
 			return f.IO.Render(resp, func() error { return printMarketDeals(f.IO, resp) })
 		},
@@ -273,6 +282,9 @@ func runKline(ctx context.Context, opts *KlineOptions) error {
 	})
 	if err != nil {
 		return err
+	}
+	if resp == nil {
+		resp = []futures.MarketKlineItem{}
 	}
 	resp = limitTail(resp, opts.Limit)
 	return f.IO.Render(resp, func() error { return printKlines(f.IO, resp) })

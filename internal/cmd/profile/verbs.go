@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -46,9 +45,7 @@ func validateProfileName(name string) error {
 // AddOptions captures the flag-bound state of `profile add`.
 type AddOptions struct {
 	Name       string
-	Endpoint   string
 	ClientID   string
-	Env        string
 	Secret     string
 	SetDefault bool
 }
@@ -59,11 +56,9 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		Use:   "add <name>",
 		Short: "Add or update a profile",
 		Long: "Add or update one credential profile.\n\n" +
-			"Profiles store user identity and env selection. The secret is saved in the OS keychain; endpoint settings live under [env.<name>].",
-		Example: "# Add profile test, use env test, and rely on the built-in test endpoint\n" +
-			"  100x profile add test --env test --client-id <CID>\n\n" +
-			"# Add profile live and save a custom endpoint for env live\n" +
-			"  100x profile add live --env live --endpoint https://api.example.com --client-id <CID>",
+			"Profiles store client identity. The secret is saved in the OS keychain. The API endpoint is built into the CLI; use E100X_ENDPOINT to override it for one command.",
+		Example: "# Add profile test and store its API secret in the keychain\n" +
+			"  100x profile add test --client-id <CID>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.Name = args[0]
@@ -77,9 +72,7 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.Endpoint, "endpoint", "", "set the endpoint for this env in [env.<name>]")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "gateway client ID for this profile")
-	c.Flags().StringVar(&opts.Env, "env", config.DefaultEnv, "env name stored on this profile")
 	c.Flags().StringVar(&opts.Secret, "secret", "", "gateway client secret; prompt when omitted")
 	c.Flags().BoolVar(&opts.SetDefault, "default", false, "make this the default profile")
 	return c
@@ -89,7 +82,6 @@ func runAdd(opts *AddOptions) (profileDetail, error) {
 	if err := validateProfileName(opts.Name); err != nil {
 		return profileDetail{}, err
 	}
-	opts.Env = config.NormalizeEnv(opts.Env)
 	if err := fillAddInputs(opts); err != nil {
 		return profileDetail{}, err
 	}
@@ -100,11 +92,7 @@ func runAdd(opts *AddOptions) (profileDetail, error) {
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]config.Profile{}
 	}
-	endpoint, err := resolveAddEndpoint(cfg, opts)
-	if err != nil {
-		return profileDetail{}, err
-	}
-	cfg.Profiles[opts.Name] = config.Profile{ClientID: opts.ClientID, Env: opts.Env}
+	cfg.Profiles[opts.Name] = config.Profile{ClientID: opts.ClientID}
 	if opts.SetDefault || cfg.Default == "" {
 		cfg.Default = opts.Name
 	}
@@ -115,7 +103,7 @@ func runAdd(opts *AddOptions) (profileDetail, error) {
 		return profileDetail{}, err
 	}
 	return profileDetail{
-		Name: opts.Name, Endpoint: endpoint, ClientID: opts.ClientID, Env: opts.Env,
+		Name: opts.Name, ClientID: opts.ClientID,
 		Current: cfg.Default == opts.Name, SecretStored: true,
 	}, nil
 }
@@ -146,29 +134,6 @@ func fillAddInputs(opts *AddOptions) error {
 	return nil
 }
 
-func resolveAddEndpoint(cfg *config.Config, opts *AddOptions) (string, error) {
-	if endpoint := strings.TrimSpace(opts.Endpoint); endpoint != "" {
-		config.SetEndpoint(cfg, opts.Env, endpoint)
-	}
-	endpoint, err := config.EndpointForEnv(cfg, opts.Env)
-	if err == nil {
-		return endpoint, nil
-	}
-	endpoint, promptErr := prompt.Input("API endpoint for "+opts.Env, "https://api.example.com")
-	if errors.Is(promptErr, prompt.ErrNoTTY) {
-		return "", fmt.Errorf("profile add: --endpoint is required for env %q in non-interactive mode", opts.Env)
-	}
-	if promptErr != nil {
-		return "", promptErr
-	}
-	endpoint = strings.TrimSpace(endpoint)
-	if endpoint == "" {
-		return "", fmt.Errorf("profile add: endpoint is required for env %q", opts.Env)
-	}
-	config.SetEndpoint(cfg, opts.Env, endpoint)
-	return endpoint, nil
-}
-
 func promptInput(title, flagName, placeholder string) (string, error) {
 	value, err := prompt.Input(title, placeholder)
 	if errors.Is(err, prompt.ErrNoTTY) {
@@ -179,8 +144,6 @@ func promptInput(title, flagName, placeholder string) (string, error) {
 
 type profileListItem struct {
 	Name     string `json:"name"`
-	Env      string `json:"env"`
-	Endpoint string `json:"endpoint"`
 	ClientID string `json:"client_id"`
 	Current  bool   `json:"current"`
 }
@@ -191,9 +154,7 @@ type currentProfile struct {
 
 type profileDetail struct {
 	Name         string `json:"name"`
-	Endpoint     string `json:"endpoint"`
 	ClientID     string `json:"client_id"`
-	Env          string `json:"env"`
 	Current      bool   `json:"current"`
 	SecretStored bool   `json:"secret_stored"`
 }
@@ -206,8 +167,8 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			"  100x profile list\n\n" +
 			"# List all profiles as JSON for scripts\n" +
 			"  100x --json profile list\n\n" +
-			"# Extract only the current profile, env, and endpoint\n" +
-			"  100x --json profile list --jq '.[] | select(.current) | {name, env, endpoint}'",
+			"# Extract only the current profile and client ID\n" +
+			"  100x --json profile list --jq '.[] | select(.current) | {name, client_id}'",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
 			if err != nil {
@@ -221,9 +182,8 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			rows := make([]profileListItem, 0, len(names))
 			for _, n := range names {
 				p := cfg.Profiles[n]
-				endpoint, _ := config.EndpointForEnv(cfg, p.Env)
 				rows = append(rows, profileListItem{
-					Name: n, Env: config.NormalizeEnv(p.Env), Endpoint: endpoint, ClientID: p.ClientID, Current: n == cfg.Default,
+					Name: n, ClientID: p.ClientID, Current: n == cfg.Default,
 				})
 			}
 			return f.IO.Render(rows, func() error {
@@ -233,9 +193,9 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 					if r.Current {
 						current = "*"
 					}
-					out = append(out, []string{r.Name, r.Env, r.Endpoint, r.ClientID, current})
+					out = append(out, []string{r.Name, r.ClientID, current})
 				}
-				return f.IO.Table([]string{"Name", "Env", "Endpoint", "Client ID", "Current"}, out)
+				return f.IO.Table([]string{"Name", "Client ID", "Current"}, out)
 			})
 		},
 	}
@@ -270,7 +230,7 @@ func newCmdShow(f *factory.Factory) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <name>",
 		Short: "Show one profile (secret redacted)",
-		Example: "# Show profile test with its endpoint, env, and client ID\n" +
+		Example: "# Show profile test with its client ID and secret status\n" +
 			"  100x profile show test",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProfileNames,
@@ -283,20 +243,14 @@ func newCmdShow(f *factory.Factory) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("profile %q not found", args[0])
 			}
-			endpoint, err := config.EndpointForEnv(cfg, p.Env)
-			if err != nil {
-				return fmt.Errorf("resolve endpoint for profile %q: %w", args[0], err)
-			}
 			payload := profileDetail{
-				Name: args[0], Endpoint: endpoint, ClientID: p.ClientID, Env: config.NormalizeEnv(p.Env),
+				Name: args[0], ClientID: p.ClientID,
 				Current: args[0] == cfg.Default, SecretStored: true,
 			}
 			return f.IO.Render(payload, func() error {
 				return f.IO.Object([]output.KV{
 					{Key: "Name", Value: payload.Name},
-					{Key: "Endpoint", Value: payload.Endpoint},
 					{Key: "Client ID", Value: payload.ClientID},
-					{Key: "Env", Value: payload.Env},
 					{Key: "Current", Value: fmt.Sprint(payload.Current)},
 					{Key: "Secret", Value: "<stored>"},
 				})

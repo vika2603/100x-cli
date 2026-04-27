@@ -19,27 +19,27 @@ make install     # → $GOBIN/100x
 
 Add a profile (interactive secret prompt; the secret is stored in the OS
 keychain, falling back to a chmod-600 file under `$XDG_CONFIG_HOME/100x/`).
-Profiles hold user credentials; environment settings live under `[env.<name>]`
-and are selected by `--env`:
+Profiles hold user credentials. The API endpoint is built into the CLI; use
+`E100X_ENDPOINT` only when you need to override it for one process:
 
 ```sh
-100x profile add test --env test --client-id <CID>
-100x profile add live --env live --endpoint https://api.example.com --client-id <CID>
+100x profile add test --client-id <CID>
+E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT
 ```
 
 Then call any command:
 
 ```sh
-100x futures balance get
-100x futures market ticker --market BTCUSDT
-100x futures order place --market BTCUSDT --side buy --price 70000 --qty 0.1
+100x futures balance list
+100x futures market state BTCUSDT
+100x futures order place BTCUSDT --side buy --price 70000 --size 0.1
 ```
 
 Use `--json` for machine output, `--jq '<expr>'` to filter, `-q` to suppress
 non-essential text:
 
 ```sh
-100x futures order list --market BTCUSDT --json --jq '.records | length'
+100x --json futures order list BTCUSDT --jq 'map({order_id, side, price, volume, status})'
 ```
 
 ## Layout
@@ -56,7 +56,7 @@ internal/{config,credential,output,exit,prompt,version}/
 ## Local dev without credentials
 
 ```sh
-E100X_FAKE=1 100x futures balance get
+E100X_FAKE=1 100x futures balance list
 ```
 
 The fake satisfies `futures.Doer`; reads return canned shapes and writes

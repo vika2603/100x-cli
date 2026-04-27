@@ -18,7 +18,7 @@ func Load() (*Config, error) {
 	path := File()
 	data, err := os.ReadFile(path) // #nosec G304 -- path is derived from XDG config dir, not user input
 	if errors.Is(err, os.ErrNotExist) {
-		return &Config{Env: map[string]EnvConfig{}, Profiles: map[string]Profile{}}, nil
+		return &Config{Profiles: map[string]Profile{}}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
@@ -29,9 +29,6 @@ func Load() (*Config, error) {
 	}
 	if c.Profiles == nil {
 		c.Profiles = map[string]Profile{}
-	}
-	if c.Env == nil {
-		c.Env = map[string]EnvConfig{}
 	}
 	return &c, nil
 }

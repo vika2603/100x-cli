@@ -1,8 +1,4 @@
 // Package position wires the `100x futures position` cobra verbs.
-//
-// `preference` uses shared/preference.go to merge partial updates with the
-// gateway's current state, since POST /setting/preference requires both
-// leverage and mode fields together.
 package position
 
 import (
@@ -19,8 +15,7 @@ func NewCmdPosition(f *factory.Factory) *cobra.Command {
 		Long: "Inspect and manage open positions.\n\n" +
 			"Use `position list` and `position history` to inspect current and closed positions.\n" +
 			"Use `position add` and `position close` to trade against an existing position. Use\n" +
-			"`position preference` to read or update leverage and margin mode, and `position margin`\n" +
-			"to inspect or adjust isolated margin.\n\n" +
+			"`position margin` to inspect or adjust isolated margin.\n\n" +
 			"When a command needs a specific position, pass --position-id or provide a symbol that\n" +
 			"resolves to exactly one matching position.",
 		Example: "# List open positions for BTCUSDT only\n" +
@@ -36,7 +31,6 @@ func NewCmdPosition(f *factory.Factory) *cobra.Command {
 		NewCmdClose(f),
 		NewCmdAdd(f),
 		NewCmdMargin(f),
-		NewCmdPreference(f),
 	)
 	return c
 }
