@@ -18,9 +18,8 @@ func NewCmdProfile(f *factory.Factory) *cobra.Command {
 		Aliases: []string{"prof"},
 		Short:   "Manage credential profiles",
 		Long: "Manage named credential profiles for private API access.\n\n" +
-			"Profiles store client identity. Secrets are stored in the OS keychain; they are not\n" +
-			"written back into the config file. The API endpoint is built into the CLI and can be\n" +
-			"overridden per process with E100X_ENDPOINT.\n\n" +
+			"Each profile is a name plus a client ID and its secret. Secrets are kept outside the\n" +
+			"profile listing and never printed.\n\n" +
 			"Use `profile add` to create or update credentials, `profile use` to switch the default\n" +
 			"profile, and `profile show` or `profile list` to inspect the current config state.",
 		Example: "# Add a profile named test\n" +

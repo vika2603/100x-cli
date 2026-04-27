@@ -78,6 +78,7 @@ func TestLoadPrivateUnknownProfileError(t *testing.T) {
 // "no profile" from "profile present but secret missing".
 func TestLoadPrivateMissingCredentialWraps(t *testing.T) {
 	isolate(t)
+	t.Setenv("E100X_ENDPOINT", "https://api.example.com/")
 	if err := config.Save(&config.Config{
 		Default:  "live",
 		Profiles: map[string]config.Profile{"live": {ClientID: "id-live"}},
@@ -95,9 +96,11 @@ func TestLoadPrivateMissingCredentialWraps(t *testing.T) {
 }
 
 // TestLoadPrivateHappyPath returns the resolved profile, name, endpoint, and
-// a non-nil client. RequestedProfile takes precedence over Default.
+// a non-nil client. RequestedProfile takes precedence over Default. The
+// endpoint comes from $E100X_ENDPOINT.
 func TestLoadPrivateHappyPath(t *testing.T) {
 	isolate(t)
+	t.Setenv("E100X_ENDPOINT", "https://api.example.com/")
 	if err := config.Save(&config.Config{
 		Default: "live",
 		Profiles: map[string]config.Profile{
@@ -121,11 +124,49 @@ func TestLoadPrivateHappyPath(t *testing.T) {
 	if sess.Profile == nil || sess.Profile.ClientID != "id-test" {
 		t.Errorf("Profile=%+v want ClientID=id-test", sess.Profile)
 	}
-	if sess.Endpoint != config.DefaultEndpoint {
-		t.Errorf("Endpoint=%q want %q", sess.Endpoint, config.DefaultEndpoint)
+	if sess.Endpoint != "https://api.example.com/" {
+		t.Errorf("Endpoint=%q want https://api.example.com/", sess.Endpoint)
 	}
 	if sess.Client == nil {
 		t.Fatal("Client must not be nil")
+	}
+}
+
+// TestLoadPrivateMissingEndpointReturnsErrNoEndpoint covers the new failure
+// mode: a profile alone is no longer enough; without env or build-time
+// default the session cannot be constructed.
+func TestLoadPrivateMissingEndpointReturnsErrNoEndpoint(t *testing.T) {
+	isolate(t)
+	saved := config.DefaultEndpoint
+	t.Cleanup(func() { config.DefaultEndpoint = saved })
+	config.DefaultEndpoint = ""
+	if err := config.Save(&config.Config{
+		Default:  "live",
+		Profiles: map[string]config.Profile{"live": {ClientID: "id-live"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := credential.Default().Save("live", "secret-live"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load(LoadOptions{Timeout: time.Second})
+	if !errors.Is(err, config.ErrNoEndpoint) {
+		t.Fatalf("err=%v want ErrNoEndpoint", err)
+	}
+}
+
+// TestLoadPublicMissingEndpointReturnsErrNoEndpoint covers the public path,
+// which also depends on a configured endpoint.
+func TestLoadPublicMissingEndpointReturnsErrNoEndpoint(t *testing.T) {
+	isolate(t)
+	saved := config.DefaultEndpoint
+	t.Cleanup(func() { config.DefaultEndpoint = saved })
+	config.DefaultEndpoint = ""
+
+	_, err := Load(LoadOptions{Public: true, Timeout: time.Second})
+	if !errors.Is(err, config.ErrNoEndpoint) {
+		t.Fatalf("err=%v want ErrNoEndpoint", err)
 	}
 }
 
@@ -134,6 +175,7 @@ func TestLoadPrivateHappyPath(t *testing.T) {
 // and Load must not duplicate that lookup.
 func TestLoadPrivateRespectsEnvProfileFallback(t *testing.T) {
 	isolate(t)
+	t.Setenv("E100X_ENDPOINT", "https://api.example.com/")
 	if err := config.Save(&config.Config{
 		Default: "live",
 		Profiles: map[string]config.Profile{

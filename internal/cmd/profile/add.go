@@ -26,8 +26,8 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		Use:   "add <name>",
 		Short: "Add or update a profile",
 		Long: "Add or update one credential profile.\n\n" +
-			"Profiles store client identity. The secret is saved in the OS keychain. The API endpoint is built into the CLI; use E100X_ENDPOINT to override it for one command.",
-		Example: "# Add profile test and store its API secret in the keychain\n" +
+			"Each profile is a name plus a client ID and its secret. The secret is prompted for when --secret is omitted and is never echoed back.",
+		Example: "# Add profile test and prompt for its secret\n" +
 			"  100x profile add test --client-id <CID>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -42,8 +42,8 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 			})
 		},
 	}
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "gateway client ID for this profile")
-	c.Flags().StringVar(&opts.Secret, "secret", "", "gateway client secret; prompt when omitted")
+	c.Flags().StringVar(&opts.ClientID, "client-id", "", "client ID for this profile")
+	c.Flags().StringVar(&opts.Secret, "secret", "", "client secret; prompt when omitted")
 	c.Flags().BoolVar(&opts.SetDefault, "default", false, "make this the default profile")
 	return c
 }

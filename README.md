@@ -19,13 +19,26 @@ make install     # → $GOBIN/100x
 
 Add a profile (interactive secret prompt; the secret is stored in the OS
 keychain, falling back to a chmod-600 file under `$XDG_CONFIG_HOME/100x/`).
-Profiles hold the client ID; secrets are stored separately. The API endpoint is
-built into the CLI; use `E100X_ENDPOINT` only when you need to override it for
-one process:
+Profiles hold the client ID; secrets are stored separately:
 
 ```sh
 100x profile add test --client-id <CID>
+100x futures market state BTCUSDT
+```
+
+Set `$E100X_ENDPOINT` to point one process at a different API host:
+
+```sh
 E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT
+```
+
+### Building from source
+
+Set `E100X_ENDPOINT_DEFAULT` so the resulting binary has a default endpoint
+and end users do not need `$E100X_ENDPOINT`:
+
+```sh
+E100X_ENDPOINT_DEFAULT=https://api.example.com make build
 ```
 
 Then call any command:

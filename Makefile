@@ -1,8 +1,12 @@
 BIN       := bin/100x
 PKG       := ./...
+# E100X_ENDPOINT_DEFAULT controls the build-time default API endpoint. Set it
+# in your shell or CI to bake a value in; leave unset to require runtime
+# $E100X_ENDPOINT.
 LDFLAGS   := -X github.com/vika2603/100x-cli/internal/version.Version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev) \
              -X github.com/vika2603/100x-cli/internal/version.Commit=$(shell git rev-parse --short HEAD 2>/dev/null || echo none) \
-             -X github.com/vika2603/100x-cli/internal/version.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+             -X github.com/vika2603/100x-cli/internal/version.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) \
+             -X github.com/vika2603/100x-cli/internal/config.DefaultEndpoint=$(E100X_ENDPOINT_DEFAULT)
 
 .PHONY: build install test fmt vet lint tidy clean run snapshot release-check
 

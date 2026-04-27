@@ -43,16 +43,20 @@ type LoadOptions struct {
 
 // Load resolves the session for one CLI invocation.
 //
-// For Public:true, Load never returns an error from credential I/O — it just
-// builds an unsigned client against the configured endpoint. For private
-// sessions, Load may return config.ErrNoProfile (no profile configured), a
-// "profile not found" error, or a wrapped credential-load error; callers
-// decide whether to surface or swallow them.
+// For Public:true, Load skips credential I/O and builds an unsigned client
+// against the configured endpoint; it may still return config.ErrNoEndpoint.
+// For private sessions, Load may return config.ErrNoProfile (no profile
+// configured), a "profile not found" error, config.ErrNoEndpoint, or a
+// wrapped credential-load error; callers decide whether to surface or
+// swallow them.
 func Load(opts LoadOptions) (Session, error) {
-	endpoint := config.Endpoint()
 	httpClient := &http.Client{Timeout: opts.Timeout}
 
 	if opts.Public {
+		endpoint, err := config.Endpoint()
+		if err != nil {
+			return Session{}, err
+		}
 		return Session{
 			Client: futures.New(futures.Options{
 				Endpoint:   endpoint,
@@ -67,6 +71,10 @@ func Load(opts LoadOptions) (Session, error) {
 		return Session{}, err
 	}
 	name, p, err := config.Resolve(cfg, opts.RequestedProfile)
+	if err != nil {
+		return Session{}, err
+	}
+	endpoint, err := config.Endpoint()
 	if err != nil {
 		return Session{}, err
 	}

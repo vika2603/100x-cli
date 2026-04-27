@@ -56,14 +56,14 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		Short: "100x futures-trading CLI",
 		Long: "Use 100x from the terminal for market data, balances, orders, triggers, and positions.\n\n" +
 			"Private commands read credentials from a named profile. A profile stores user identity\n" +
-			"only. The API endpoint is built into the CLI, and E100X_ENDPOINT overrides it per\n" +
-			"process. Public market commands can run without private credentials.\n\n" +
+			"only. Set $E100X_ENDPOINT to point the CLI at a different API host. Public market\n" +
+			"commands can run without private credentials.\n\n" +
 			"Human output is designed for terminal use. Add --json for machine-readable API-shaped\n" +
 			"output; --jq also enables JSON and filters it for scripts. Use --help on any subcommand to inspect\n" +
 			"required arguments, default values, examples, and command-specific notes.",
-		Example: "# Add a test profile named test and store the secret in the keychain\n" +
+		Example: "# Add a profile named test (you will be prompted for the secret)\n" +
 			"  100x profile add test --client-id <CID>\n\n" +
-			"# Run one command against a custom endpoint without changing config\n" +
+			"# Run one command against a different API host\n" +
 			"  E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT\n\n" +
 			"# Show the latest ticker-style state for BTCUSDT\n" +
 			"  100x futures market state BTCUSDT",
@@ -125,6 +125,9 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		if err != nil {
 			if errors.Is(err, config.ErrNoProfile) {
 				return fmt.Errorf("no profile configured: run `100x profile add`")
+			}
+			if errors.Is(err, config.ErrNoEndpoint) {
+				return fmt.Errorf("no API endpoint configured: set $E100X_ENDPOINT")
 			}
 			return err
 		}

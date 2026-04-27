@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,8 +36,10 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "endpoint") || strings.Contains(string(data), "[env.") {
-		t.Fatalf("config TOML must not encode endpoint/env settings:\n%s", string(data))
+	// Endpoint is intentionally not part of Config: it is build-time injected
+	// or supplied via $E100X_ENDPOINT, never persisted to disk.
+	if strings.Contains(string(data), "endpoint") {
+		t.Fatalf("config TOML must not encode an endpoint:\n%s", string(data))
 	}
 
 	got, err := Load()
@@ -109,14 +112,82 @@ func TestResolve(t *testing.T) {
 	})
 }
 
+// TestEndpointResolution covers precedence: $E100X_ENDPOINT > build-time
+// DefaultEndpoint > ErrNoEndpoint. The build-time default is mutated via
+// the package variable in tests, mirroring what -ldflags does at link time.
 func TestEndpointResolution(t *testing.T) {
-	t.Setenv("E100X_ENDPOINT", "")
-	if got := Endpoint(); got != DefaultEndpoint {
-		t.Errorf("Endpoint(default)=%q want %q", got, DefaultEndpoint)
-	}
+	saved := DefaultEndpoint
+	t.Cleanup(func() { DefaultEndpoint = saved })
 
-	t.Setenv("E100X_ENDPOINT", "https://env.example.com")
-	if got := Endpoint(); got != "https://env.example.com" {
-		t.Errorf("Endpoint(env)=%q want https://env.example.com", got)
-	}
+	t.Run("env beats build-time default", func(t *testing.T) {
+		DefaultEndpoint = "https://build.example.com"
+		t.Setenv("E100X_ENDPOINT", "https://env.example.com")
+		got, err := Endpoint()
+		if err != nil || got != "https://env.example.com" {
+			t.Errorf("Endpoint=%q err=%v want https://env.example.com", got, err)
+		}
+	})
+
+	t.Run("build-time default used when env empty", func(t *testing.T) {
+		DefaultEndpoint = "https://build.example.com"
+		t.Setenv("E100X_ENDPOINT", "")
+		got, err := Endpoint()
+		if err != nil || got != "https://build.example.com" {
+			t.Errorf("Endpoint=%q err=%v want https://build.example.com", got, err)
+		}
+	})
+
+	t.Run("nothing configured returns ErrNoEndpoint", func(t *testing.T) {
+		DefaultEndpoint = ""
+		t.Setenv("E100X_ENDPOINT", "")
+		_, err := Endpoint()
+		if !errors.Is(err, ErrNoEndpoint) {
+			t.Errorf("err=%v want ErrNoEndpoint", err)
+		}
+	})
+
+	t.Run("whitespace-only values do not satisfy", func(t *testing.T) {
+		DefaultEndpoint = "   "
+		t.Setenv("E100X_ENDPOINT", "   ")
+		_, err := Endpoint()
+		if !errors.Is(err, ErrNoEndpoint) {
+			t.Errorf("err=%v want ErrNoEndpoint", err)
+		}
+	})
+
+	t.Run("rejects garbage env value", func(t *testing.T) {
+		DefaultEndpoint = ""
+		t.Setenv("E100X_ENDPOINT", "not-a-url")
+		_, err := Endpoint()
+		if err == nil || !strings.Contains(err.Error(), "invalid endpoint") {
+			t.Errorf("err=%v want validation error", err)
+		}
+	})
+
+	t.Run("rejects non-http scheme", func(t *testing.T) {
+		DefaultEndpoint = ""
+		t.Setenv("E100X_ENDPOINT", "ftp://example.com")
+		_, err := Endpoint()
+		if err == nil || !strings.Contains(err.Error(), "scheme") {
+			t.Errorf("err=%v want scheme error", err)
+		}
+	})
+
+	t.Run("rejects missing host", func(t *testing.T) {
+		DefaultEndpoint = ""
+		t.Setenv("E100X_ENDPOINT", "https://")
+		_, err := Endpoint()
+		if err == nil || !strings.Contains(err.Error(), "host") {
+			t.Errorf("err=%v want host error", err)
+		}
+	})
+
+	t.Run("rejects garbage build-time default", func(t *testing.T) {
+		DefaultEndpoint = "not-a-url"
+		t.Setenv("E100X_ENDPOINT", "")
+		_, err := Endpoint()
+		if err == nil || !strings.Contains(err.Error(), "invalid endpoint") {
+			t.Errorf("err=%v want validation error", err)
+		}
+	})
 }
