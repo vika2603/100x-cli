@@ -85,8 +85,22 @@ esac
 # ----- tooling -------------------------------------------------------------
 if command -v curl >/dev/null 2>&1; then
 	fetch() { curl -fsSL "$1" -o "$2"; }
+	fetch_progress() {
+		if [ -t 2 ]; then
+			curl -fL --progress-bar "$1" -o "$2"
+		else
+			curl -fsSL "$1" -o "$2"
+		fi
+	}
 elif command -v wget >/dev/null 2>&1; then
 	fetch() { wget -q "$1" -O "$2"; }
+	fetch_progress() {
+		if [ -t 2 ]; then
+			wget -q --show-progress "$1" -O "$2"
+		else
+			wget -q "$1" -O "$2"
+		fi
+	}
 else
 	fail "need curl or wget on PATH"
 fi
@@ -131,7 +145,7 @@ RESOLVED="$(printf '%s' "$ASSET" | sed -E 's/^[^_]+_(.+)_[^_]+_[^_]+\.tar\.gz$/\
 
 # ----- download ------------------------------------------------------------
 step "Downloading ${BOLD}${ASSET}${RESET}"
-fetch "$BASE/$ASSET" "$TMP/$ASSET"
+fetch_progress "$BASE/$ASSET" "$TMP/$ASSET"
 
 GOT="$(sha "$TMP/$ASSET")"
 if [ "$GOT" != "$EXPECTED" ]; then
