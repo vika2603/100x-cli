@@ -246,10 +246,10 @@ func TestOrderApplyTPPreservingSLDoesTwoCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 	if first.TakeProfitPrice != "80000" || first.StopLossPrice != "65000" {
-		t.Errorf("first call=%+v want both legs (SL=65000 TP=80000)", first)
+		t.Errorf("first call=%+v want both SL=65000 and TP=80000", first)
 	}
 	if second.TakeProfitPrice != "80000" || second.StopLossPrice != "65000" {
-		t.Errorf("second call=%+v want both legs restated", second)
+		t.Errorf("second call=%+v want both SL and TP restated", second)
 	}
 }
 
@@ -298,10 +298,10 @@ func TestOrderApplyNoOpWhenStateMatches(t *testing.T) {
 	// No mock expectations set; gomock.NewController would have failed if Apply called the gateway.
 }
 
-// TestOrderApplyReattachAfterRebookSendsBothLegs covers order-edit's path:
-// current is empty (freshly rebooked order), want carries both old legs,
-// Apply must send a single StopOrderClose with both fields populated.
-func TestOrderApplyReattachAfterRebookSendsBothLegs(t *testing.T) {
+// TestOrderApplyReattachAfterRebookSendsBothSides covers order-edit's path:
+// current is empty (freshly rebooked order), want carries both old SL and
+// TP, Apply must send a single StopOrderClose with both fields populated.
+func TestOrderApplyReattachAfterRebookSendsBothSides(t *testing.T) {
 	c, doer := newClient(t)
 	current := State{}
 	want := State{

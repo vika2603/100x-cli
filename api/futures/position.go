@@ -93,10 +93,11 @@ func (c *PositionClient) MarketClosePosition(ctx context.Context, req MarketClos
 	return &resp, nil
 }
 
-// StopClosePositionReq attaches SL/TP legs to a position via POST /position/close/stop.
+// StopClosePositionReq attaches SL/TP to a position via POST /position/close/stop.
 //
-// The endpoint requires both legs to be sent together; callers preserving one
-// leg while updating the other must read current values and pass both fields.
+// The endpoint requires both SL and TP fields to be sent together; callers
+// preserving one side while updating the other must read current values and
+// pass both fields.
 type StopClosePositionReq struct {
 	Market              string          `url:"market,omitempty" json:"market,omitempty"`
 	PositionID          string          `url:"position_id,omitempty" json:"position_id,omitempty"`
@@ -109,7 +110,7 @@ type StopClosePositionReq struct {
 // StopClosePositionResp is the empty response of /position/close/stop.
 type StopClosePositionResp struct{}
 
-// StopClosePosition attaches SL/TP legs to an open position.
+// StopClosePosition attaches SL/TP to an open position.
 func (c *PositionClient) StopClosePosition(ctx context.Context, req StopClosePositionReq) (*StopClosePositionResp, error) {
 	var resp StopClosePositionResp
 	if err := c.doer.Post(ctx, "/open/api/v2/position/close/stop", req, &resp); err != nil {

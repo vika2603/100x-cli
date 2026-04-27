@@ -371,10 +371,11 @@ func (c *OrderClient) EditStopOrder(ctx context.Context, req StopOrderEditReq) (
 	return &resp, nil
 }
 
-// StopOrderCloseReq attaches SL/TP legs to a pending order via POST /order/close/stop.
+// StopOrderCloseReq attaches SL/TP to a pending order via POST /order/close/stop.
 //
-// The endpoint requires both legs to be sent together; callers preserving one
-// leg while updating the other must read current values and pass both fields.
+// The endpoint requires both SL and TP fields to be sent together; callers
+// preserving one side while updating the other must read current values and
+// pass both fields.
 type StopOrderCloseReq struct {
 	Market              string          `url:"market,omitempty" json:"market,omitempty"`
 	OrderID             string          `url:"order_id,omitempty" json:"order_id,omitempty"`
@@ -387,7 +388,7 @@ type StopOrderCloseReq struct {
 // StopOrderCloseResp is the empty response of /order/close/stop.
 type StopOrderCloseResp struct{}
 
-// StopOrderClose attaches SL/TP legs to a pending order.
+// StopOrderClose attaches SL/TP to a pending order.
 func (c *OrderClient) StopOrderClose(ctx context.Context, req StopOrderCloseReq) (*StopOrderCloseResp, error) {
 	var resp StopOrderCloseResp
 	if err := c.doer.Post(ctx, "/open/api/v2/order/close/stop", req, &resp); err != nil {
@@ -396,7 +397,7 @@ func (c *OrderClient) StopOrderClose(ctx context.Context, req StopOrderCloseReq)
 	return &resp, nil
 }
 
-// LimitOrderBatchItemReq is one leg of a batch limit order.
+// LimitOrderBatchItemReq is one item in a batch limit-order request.
 type LimitOrderBatchItemReq struct {
 	Side      Side   `url:"side,omitempty" json:"side,omitempty"`
 	Price     string `url:"price,omitempty" json:"price,omitempty"`
