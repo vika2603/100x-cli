@@ -4,6 +4,22 @@ Command-line client for the 100x futures-trading API.
 
 ## Install
 
+One-liner (Linux / macOS, amd64 / arm64). Downloads the latest release
+tarball, verifies the SHA-256, and drops the binary in `$HOME/.local/bin`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/vika2603/100x-cli/main/script/install.sh | sh
+```
+
+Pin a version or pick a directory:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/vika2603/100x-cli/main/script/install.sh \
+  | sh -s -- --version v0.3.0 --to /usr/local/bin
+```
+
+Or with Go:
+
 ```sh
 go install github.com/vika2603/100x-cli/cmd/100x@latest
 ```
