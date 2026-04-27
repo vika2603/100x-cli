@@ -99,7 +99,10 @@ func runList(ctx context.Context, opts *ListOptions) error {
 		}
 		records := orderRecords(resp.Records)
 		return f.IO.Render(records, func() error {
-			return printOrders(f.IO, records, "Created", "No open orders found.", func(o futures.OrderItem) string {
+			// Pending orders are always limit (market orders fill or reject
+			// immediately and never reach this list), so the Type column would
+			// be a constant LIMIT and is omitted.
+			return printOrders(f.IO, records, "Created", "No open orders found.", false, func(o futures.OrderItem) string {
 				return format.UnixSecondsFloat(o.CreateTime)
 			})
 		})
@@ -117,7 +120,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	}
 	records := orderRecords(resp.Records)
 	return f.IO.Render(records, func() error {
-		return printOrders(f.IO, records, "Finished", "No finished orders found.", func(o futures.OrderItem) string {
+		return printOrders(f.IO, records, "Finished", "No finished orders found.", true, func(o futures.OrderItem) string {
 			return format.UnixSecondsFloat(o.UpdateTime)
 		})
 	})
@@ -130,17 +133,33 @@ func orderRecords(rows []futures.OrderItem) []futures.OrderItem {
 	return rows
 }
 
-func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, emptyMessage string, timeValue func(futures.OrderItem) string) error {
+func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, emptyMessage string, showType bool, timeValue func(futures.OrderItem) string) error {
 	if len(rows) == 0 {
 		return io.Emptyln(emptyMessage)
 	}
+	cols := []output.Column{
+		output.LCol("Order ID"), output.LCol("Symbol"), output.LCol("Side"),
+	}
+	if showType {
+		cols = append(cols, output.LCol("Type"))
+	}
+	cols = append(cols,
+		output.LCol("Status"),
+		output.RCol("Price"), output.RCol("Size"), output.RCol("Filled"),
+		output.RCol("SL"), output.RCol("TP"),
+		output.LCol("Client ID"), output.LCol(timeHeader),
+	)
 	out := make([][]string, 0, len(rows))
 	for _, o := range rows {
-		out = append(out, []string{
+		row := []string{
 			strconv.FormatInt(o.OrderID, 10),
 			o.Market,
 			format.Side(io, o.Side),
-			format.OrderType(o.Type),
+		}
+		if showType {
+			row = append(row, format.OrderType(o.Type))
+		}
+		row = append(row,
 			format.OrderStatus(io, o.Status),
 			o.Price,
 			o.Volume,
@@ -149,15 +168,10 @@ func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, empt
 			emptyDash(o.TakeProfitPrice),
 			o.ClientOID,
 			timeValue(o),
-		})
+		)
+		out = append(out, row)
 	}
-	return io.Table([]output.Column{
-		output.LCol("Order ID"), output.LCol("Symbol"), output.LCol("Side"),
-		output.LCol("Type"), output.LCol("Status"),
-		output.RCol("Price"), output.RCol("Size"), output.RCol("Filled"),
-		output.RCol("SL"), output.RCol("TP"),
-		output.LCol("Client ID"), output.LCol(timeHeader),
-	}, out)
+	return io.Table(cols, out)
 }
 
 func emptyDash(value string) string {
