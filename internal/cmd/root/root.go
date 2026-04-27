@@ -102,14 +102,25 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		f.Yes = gf.yes
 		f.Timeout = gf.timeout
 
-		if isCredentialFreeCmd(c) || (c.HasSubCommands() && !c.Runnable()) {
+		// Group commands display help; their RunE only calls c.Help(), which
+		// never touches the API. Skip client load structurally rather than
+		// asking each group to declare AuthNone.
+		if c.HasSubCommands() {
+			return nil
+		}
+
+		// Each verb (or its nearest ancestor) declares its own client need via
+		// factory.RequirePublic / RequirePrivate. Unmarked verbs (version,
+		// completion, profile management) load nothing.
+		mode := factory.LookupAuth(c)
+		if mode == factory.AuthNone {
 			return nil
 		}
 
 		sess, err := session.Load(session.LoadOptions{
 			RequestedProfile: gf.profile,
 			Timeout:          gf.timeout,
-			Public:           isPublicCmd(c),
+			Public:           mode == factory.AuthPublic,
 		})
 		if err != nil {
 			if errors.Is(err, config.ErrNoProfile) {
@@ -222,18 +233,6 @@ func summarizeNetworkCause(err error) string {
 	return "network error while contacting 100x API"
 }
 
-// isCredentialFreeCmd reports whether c is in a subtree that does not need
-// a Factory.Client.
-func isCredentialFreeCmd(c *cobra.Command) bool {
-	for cur := c; cur != nil; cur = cur.Parent() {
-		switch cur.Name() {
-		case "profile", "completion", "help", "version", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
-			return true
-		}
-	}
-	return false
-}
-
 type versionPayload struct {
 	Version   string `json:"version"`
 	Commit    string `json:"commit"`
@@ -293,17 +292,6 @@ func configureUsageErrors(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		configureUsageErrors(sub)
 	}
-}
-
-// isPublicCmd reports whether c is in a subtree that can use a configured
-// endpoint without loading private credentials.
-func isPublicCmd(c *cobra.Command) bool {
-	for cur := c; cur != nil; cur = cur.Parent() {
-		if cur.Name() == "market" {
-			return true
-		}
-	}
-	return false
 }
 
 func newRenderer(gf *globalFlags) (*output.Renderer, error) {

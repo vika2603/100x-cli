@@ -15,6 +15,7 @@ import (
 
 const completionTimeout = 2 * time.Second
 
+// Assets completes wallet asset symbols from the configured private account.
 func Assets(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	client, ctx, cancel, ok := privateClient(cmd)
 	if !ok {
@@ -33,6 +34,7 @@ func Assets(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.
 	return filtered(out, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
+// OpenOrderArgs completes a market symbol followed by an open order id.
 func OpenOrderArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		return Symbols(cmd, args, toComplete)
@@ -40,6 +42,7 @@ func OpenOrderArgs(cmd *cobra.Command, args []string, toComplete string) ([]stri
 	return completeOpenOrderIDs(cmd, args[0], toComplete)
 }
 
+// OpenOrderArg completes either a market symbol or one open order id.
 func OpenOrderArg(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	switch len(args) {
 	case 0:
@@ -51,12 +54,14 @@ func OpenOrderArg(cmd *cobra.Command, args []string, toComplete string) ([]strin
 	}
 }
 
+// OpenOrderIDsFor returns a completion function for open order ids in symbol.
 func OpenOrderIDsFor(symbol string) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return completeOpenOrderIDs(cmd, symbol, toComplete)
 	}
 }
 
+// OpenPositionArgs completes a market symbol followed by an open position id.
 func OpenPositionArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		return Symbols(cmd, args, toComplete)
@@ -64,6 +69,7 @@ func OpenPositionArgs(cmd *cobra.Command, args []string, toComplete string) ([]s
 	return completeOpenPositionIDs(cmd, args[0], toComplete)
 }
 
+// OpenPositionArg completes either a market symbol or one open position id.
 func OpenPositionArg(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	switch len(args) {
 	case 0:
@@ -75,6 +81,7 @@ func OpenPositionArg(cmd *cobra.Command, args []string, toComplete string) ([]st
 	}
 }
 
+// OpenPositionIDs completes open position ids, optionally scoped by the first arg.
 func OpenPositionIDs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	symbol := ""
 	if len(args) > 0 {
@@ -83,12 +90,14 @@ func OpenPositionIDs(cmd *cobra.Command, args []string, toComplete string) ([]st
 	return completeOpenPositionIDs(cmd, symbol, toComplete)
 }
 
+// OpenPositionIDsFor returns a completion function for open position ids in symbol.
 func OpenPositionIDsFor(symbol string) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return completeOpenPositionIDs(cmd, symbol, toComplete)
 	}
 }
 
+// ActiveTriggerArgs completes a market symbol followed by an active trigger id.
 func ActiveTriggerArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) == 0 {
 		return Symbols(cmd, args, toComplete)
@@ -96,6 +105,7 @@ func ActiveTriggerArgs(cmd *cobra.Command, args []string, toComplete string) ([]
 	return completeActiveTriggerIDs(cmd, args[0], toComplete)
 }
 
+// ActiveTriggerArg completes either a market symbol or one active trigger id.
 func ActiveTriggerArg(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	switch len(args) {
 	case 0:
@@ -107,6 +117,7 @@ func ActiveTriggerArg(cmd *cobra.Command, args []string, toComplete string) ([]s
 	}
 }
 
+// ActiveTriggerIDsFor returns a completion function for active trigger ids in symbol.
 func ActiveTriggerIDsFor(symbol string) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return completeActiveTriggerIDs(cmd, symbol, toComplete)
@@ -171,6 +182,7 @@ func completeActiveTriggerIDs(cmd *cobra.Command, symbol, toComplete string) ([]
 	return filtered(out, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
+// Symbols completes public futures market symbols.
 func Symbols(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	client, ctx, cancel := publicClient(cmd)
 	defer cancel()
@@ -190,6 +202,7 @@ func Symbols(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra
 	return filtered(out, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
+// SymbolArg completes a single public futures market symbol.
 func SymbolArg(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return noFiles()

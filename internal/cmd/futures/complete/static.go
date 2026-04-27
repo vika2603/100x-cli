@@ -3,14 +3,17 @@ package complete
 
 import "github.com/spf13/cobra"
 
+// NoFiles disables filesystem completion.
 func NoFiles(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
+// BalanceEventTypes completes balance history business types.
 func BalanceEventTypes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("deposit", "withdraw", "faucet")
 }
 
+// KlineIntervals completes supported market kline intervals.
 func KlineIntervals(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values(
 		"1m", "5m", "10m", "15m", "30m",
@@ -22,34 +25,42 @@ func KlineIntervals(*cobra.Command, []string, string) ([]string, cobra.ShellComp
 	)
 }
 
+// MarginModes completes supported position margin modes.
 func MarginModes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("ISOLATED", "CROSS")
 }
 
+// OrderSides completes order side values.
 func OrderSides(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("buy", "sell")
 }
 
+// OrderTypes completes order type values.
 func OrderTypes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("limit", "market")
 }
 
+// OrderSizes completes common order size examples.
 func OrderSizes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("0.001", "0.01", "0.1", "1", "10", "100")
 }
 
+// TimeExpressions completes common relative time expressions.
 func TimeExpressions(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("now", "now-15m", "now-1h", "now-4h", "now-24h", "now-7d")
 }
 
+// TimeInForce completes limit order time-in-force values.
 func TimeInForce(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("GTC", "IOC", "FOK", "POST_ONLY")
 }
 
+// TriggerFeeds completes supported trigger price feeds.
 func TriggerFeeds(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("LAST", "INDEX", "MARK")
 }
 
+// TriggerLegs completes stop-loss and take-profit labels.
 func TriggerLegs(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("SL", "TP")
 }

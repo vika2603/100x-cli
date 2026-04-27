@@ -121,16 +121,16 @@ func commandLabel(cmd *cobra.Command) string {
 }
 
 func commandNamePadding(cmd *cobra.Command) int {
-	max := 0
+	maxWidth := 0
 	for _, sub := range cmd.Commands() {
 		if !sub.IsAvailableCommand() || sub.IsAdditionalHelpTopicCommand() {
 			continue
 		}
-		if n := len(commandLabel(sub)); n > max {
-			max = n
+		if n := len(commandLabel(sub)); n > maxWidth {
+			maxWidth = n
 		}
 	}
-	return max
+	return maxWidth
 }
 
 func rpad(s string, padding int) string {

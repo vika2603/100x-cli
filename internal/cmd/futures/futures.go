@@ -64,5 +64,8 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 		balanceCmd, balancesCmd,
 		marketCmd,
 	)
+	// Default for the futures subtree: signed private client. The market
+	// child group overrides this with RequirePublic for its own descendants.
+	factory.RequirePrivate(c)
 	return c
 }

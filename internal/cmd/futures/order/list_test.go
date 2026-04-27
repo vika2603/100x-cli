@@ -6,11 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/mock/gomock"
+
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/mocks"
 	"github.com/vika2603/100x-cli/internal/output"
-	"go.uber.org/mock/gomock"
 )
 
 func TestRunListOpenEmptyHuman(t *testing.T) {

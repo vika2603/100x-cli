@@ -1,3 +1,4 @@
+// Package clierr classifies command-line input errors for stable exits.
 package clierr
 
 import (

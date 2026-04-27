@@ -1,16 +1,15 @@
-package shared
+package position
 
 import (
 	"context"
 	"testing"
 
+	"go.uber.org/mock/gomock"
+
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/mocks"
-	"go.uber.org/mock/gomock"
 )
 
-// TestBuildAdjustMarketPreferenceReqMergesPreserved verifies the set-both
-// compensation: a partial CLI update reads current and merges before writing.
 func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	doer := mocks.NewMockDoer(ctrl)
@@ -20,7 +19,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("change leverage only preserves position type", func(t *testing.T) {
 		expectPreferenceRead(doer, current)
-		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
+		req, err := buildAdjustMarketPreferenceReq(ctx, c, mergedPreferenceInput{
 			Symbol: "BTCUSDT", Leverage: "50",
 		})
 		if err != nil {
@@ -36,7 +35,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("change position type only preserves leverage", func(t *testing.T) {
 		expectPreferenceRead(doer, current)
-		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
+		req, err := buildAdjustMarketPreferenceReq(ctx, c, mergedPreferenceInput{
 			Symbol: "BTCUSDT", PositionType: "CROSS",
 		})
 		if err != nil {
@@ -51,7 +50,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 	})
 
 	t.Run("both fields skip the read", func(t *testing.T) {
-		req, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
+		req, err := buildAdjustMarketPreferenceReq(ctx, c, mergedPreferenceInput{
 			Symbol: "BTCUSDT", Leverage: "100", PositionType: "CROSS",
 		})
 		if err != nil {
@@ -64,7 +63,7 @@ func TestBuildAdjustMarketPreferenceReqMergesPreserved(t *testing.T) {
 
 	t.Run("invalid position type errors", func(t *testing.T) {
 		expectPreferenceRead(doer, current)
-		_, err := BuildAdjustMarketPreferenceReq(ctx, c, MergedPreferenceInput{
+		_, err := buildAdjustMarketPreferenceReq(ctx, c, mergedPreferenceInput{
 			Symbol: "BTCUSDT", PositionType: "garbage",
 		})
 		if err == nil {
