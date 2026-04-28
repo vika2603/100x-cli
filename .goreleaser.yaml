@@ -26,10 +26,10 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/vika2603/100x-cli/internal/version.Version={{.Version}}
-      - -X github.com/vika2603/100x-cli/internal/version.Commit={{.ShortCommit}}
-      - -X github.com/vika2603/100x-cli/internal/version.BuildDate={{.Date}}
-      - -X github.com/vika2603/100x-cli/internal/version.RepoSlug={{ envOrDefault "GITHUB_REPOSITORY" "" }}
+      - -X github.com/vika2603/100x-cli/internal/version.version={{.Version}}
+      - -X github.com/vika2603/100x-cli/internal/version.commit={{.ShortCommit}}
+      - -X github.com/vika2603/100x-cli/internal/version.buildDate={{.Date}}
+      - -X github.com/vika2603/100x-cli/internal/version.repoSlug={{ envOrDefault "GITHUB_REPOSITORY" "" }}
       - -X github.com/vika2603/100x-cli/internal/config.DefaultEndpoint={{ envOrDefault "E100X_ENDPOINT_DEFAULT" "" }}
 
 archives:

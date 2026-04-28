@@ -265,9 +265,9 @@ func newCmdVersion(f *factory.Factory) *cobra.Command {
 
 func renderVersion(f *factory.Factory) error {
 	payload := versionPayload{
-		Version:   version.Version,
-		Commit:    version.Commit,
-		BuildDate: version.BuildDate,
+		Version:   version.Current.Version,
+		Commit:    version.Current.Commit,
+		BuildDate: version.Current.BuildDate,
 	}
 	return f.IO.Render(payload, func() error {
 		return f.IO.Object([]output.KV{

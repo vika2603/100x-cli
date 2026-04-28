@@ -5,10 +5,10 @@ PKG       := ./...
 # $E100X_ENDPOINT.
 # REPO_SLUG (optional) bakes in "owner/repo" so `100x upgrade` knows which
 # GitHub release stream to follow. Leave unset to ship without the command.
-LDFLAGS   := -X github.com/vika2603/100x-cli/internal/version.Version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev) \
-             -X github.com/vika2603/100x-cli/internal/version.Commit=$(shell git rev-parse --short HEAD 2>/dev/null || echo none) \
-             -X github.com/vika2603/100x-cli/internal/version.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) \
-             -X github.com/vika2603/100x-cli/internal/version.RepoSlug=$(REPO_SLUG) \
+LDFLAGS   := -X github.com/vika2603/100x-cli/internal/version.version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev) \
+             -X github.com/vika2603/100x-cli/internal/version.commit=$(shell git rev-parse --short HEAD 2>/dev/null || echo none) \
+             -X github.com/vika2603/100x-cli/internal/version.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) \
+             -X github.com/vika2603/100x-cli/internal/version.repoSlug=$(REPO_SLUG) \
              -X github.com/vika2603/100x-cli/internal/config.DefaultEndpoint=$(E100X_ENDPOINT_DEFAULT)
 
 .PHONY: build install test fmt vet lint tidy clean run snapshot release-check

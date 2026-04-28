@@ -92,12 +92,12 @@ func run(f *factory.Factory, opts options) error {
 		return fmt.Errorf("resolve current binary: %w", err)
 	}
 
-	current := strings.TrimSpace(version.Version)
+	current := strings.TrimSpace(version.Current.Version)
 
 	// No release stream baked in: this is a source build with nowhere to
 	// upgrade from. Report up-to-date so scripts that probe `upgrade --check`
 	// don't fail, and so `upgrade` itself is a harmless no-op.
-	if strings.TrimSpace(version.RepoSlug) == "" {
+	if strings.TrimSpace(version.Current.RepoSlug) == "" {
 		f.IO.Println(fmt.Sprintf("Already on %s; nothing to upgrade.", current))
 		return f.IO.Render(renderPayload{
 			Path:            binPath,
@@ -221,7 +221,7 @@ func resolveTargetTag(ctx context.Context, client *req.Client, requested string)
 		}
 		return requested, nil
 	}
-	url := fmt.Sprintf("https://github.com/%s/releases/latest", version.RepoSlug)
+	url := fmt.Sprintf("https://github.com/%s/releases/latest", version.Current.RepoSlug)
 	noRedirect := client.Clone().SetRedirectPolicy(req.NoRedirectPolicy())
 	resp, err := noRedirect.R().SetContext(ctx).Head(url)
 	if err != nil && !isExpectedRedirectError(err) {
@@ -262,7 +262,7 @@ func install(ctx context.Context, client *req.Client, io *output.Renderer, tag, 
 		archiveExt = ".zip"
 	}
 	suffix := fmt.Sprintf("_%s_%s%s", osName, arch, archiveExt)
-	base := fmt.Sprintf("https://github.com/%s/releases/download/%s", version.RepoSlug, tag)
+	base := fmt.Sprintf("https://github.com/%s/releases/download/%s", version.Current.RepoSlug, tag)
 
 	io.Println(fmt.Sprintf("Resolving %s", tag))
 	sumsResp, err := client.R().SetContext(ctx).Get(base + "/checksums.txt")
