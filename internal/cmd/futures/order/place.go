@@ -15,7 +15,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // PlaceOptions captures the flag-bound state of `order place`.
@@ -150,7 +149,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	}
 	isStop := opts.SLPrice != "" || opts.TPPrice != ""
 	f := opts.Factory
-	ok, err := prompt.ConfirmDestructive(placeConfirmTitle(opts), f.Yes)
+	ok, err := f.ConfirmDestructive(placeConfirmTitle(opts))
 	if err != nil {
 		return err
 	}
@@ -210,8 +209,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 
 // placeConfirmTitle renders a one-line summary of the order for the
 // destructive-op prompt: side, size, symbol, type/price, and any attached
-// SL/TP triggers. Bare orders read like "Place LIMIT BUY 0.001 BTCUSDT
-// at 70000?"; orders with brackets append "with SL X, TP Y".
+// SL/TP triggers. The factory wrapper adds the [profile] prefix.
 func placeConfirmTitle(opts *PlaceOptions) string {
 	typeLabel := "MARKET"
 	priceClause := ""

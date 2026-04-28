@@ -14,7 +14,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // CloseOptions captures the flag-bound state of `position close`.
@@ -104,8 +103,8 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		if err != nil {
 			return err
 		}
-		ok, err := prompt.ConfirmDestructive(
-			fmt.Sprintf("Close full position %s on %s at market?", positionID, opts.Symbol), f.Yes)
+		ok, err := f.ConfirmDestructive(
+			fmt.Sprintf("Close full position %s on %s at market?", positionID, opts.Symbol))
 		if err != nil {
 			return err
 		}

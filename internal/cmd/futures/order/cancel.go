@@ -12,7 +12,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/exit"
-	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // CancelOptions captures the flag-bound state of `order cancel`.
@@ -107,7 +106,7 @@ func confirmCancelOrders(f *factory.Factory, symbol string, orderIDs []string) e
 	if len(orderIDs) == 1 {
 		title = fmt.Sprintf("Cancel order %s in %s?", orderIDs[0], symbol)
 	}
-	ok, err := prompt.ConfirmDestructive(title, f.Yes)
+	ok, err := f.ConfirmDestructive(title)
 	if err != nil {
 		return err
 	}
@@ -146,8 +145,8 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	f := opts.Factory
-	ok, err := prompt.ConfirmDestructive(
-		fmt.Sprintf("Cancel every open order in %s?", opts.Symbol), f.Yes)
+	ok, err := f.ConfirmDestructive(
+		fmt.Sprintf("Cancel every open order in %s?", opts.Symbol))
 	if err != nil {
 		return err
 	}

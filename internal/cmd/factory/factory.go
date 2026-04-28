@@ -7,11 +7,13 @@
 package factory
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/config"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // Factory carries the live dependencies for a CLI invocation.
@@ -33,4 +35,15 @@ type Factory struct {
 	// Timeout caps each HTTP request the SDK makes. Zero means use the
 	// SDK default.
 	Timeout time.Duration
+}
+
+// ConfirmDestructive prompts the user before a destructive trading action
+// and prefixes the title with the active profile so it's always obvious
+// which account the action would hit. Defers to prompt.ConfirmDestructive
+// for the four-quadrant tty/--yes matrix.
+func (f *Factory) ConfirmDestructive(title string) (bool, error) {
+	if f.ProfileName != "" {
+		title = fmt.Sprintf("[%s] %s", f.ProfileName, title)
+	}
+	return prompt.ConfirmDestructive(title, f.Yes)
 }
