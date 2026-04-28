@@ -17,17 +17,18 @@ import (
 
 // PlaceOptions captures the flag-bound state of `order place`.
 type PlaceOptions struct {
-	Type     string
-	Symbol   string
-	Side     string
-	Price    string
-	Size     string
-	ClientID string
-	TIF      string
-	SL       string
-	SLBy     string
-	TP       string
-	TPBy     string
+	Symbol      string
+	Limit       bool
+	Market      bool
+	Side        string
+	Price       string
+	Size        string
+	ClientID    string
+	TIF         string
+	SLPrice     string
+	SLTriggerBy string
+	TPPrice     string
+	TPTriggerBy string
 
 	Factory *factory.Factory
 }
@@ -35,42 +36,51 @@ type PlaceOptions struct {
 // NewCmdPlace builds the `order place` cobra command.
 //
 // The cobra wiring stops here; runPlace below is pure orchestration.
+//
+// --limit / --market is the order-type pair. Cobra group annotations enforce:
+//   - exactly one of --limit / --market must be set
+//   - --price is only valid (and required) together with --limit
 func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	opts := &PlaceOptions{Factory: f}
 	c := &cobra.Command{
-		Use:   "place <symbol>",
+		Use:   "place",
 		Short: "Place a limit or market order",
-		Example: "# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
-			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001\n\n" +
-			"# Place a SELL market order on BTCUSDT for size 0.001\n" +
-			"  100x futures order place BTCUSDT --type market --side sell --size 0.001\n\n" +
-			"# Place a BUY limit order and attach SL 68000 plus TP 76000\n" +
-			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001 --sl 68000 --tp 76000",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: complete.SymbolArg,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Symbol = args[0]
+		Example: "# Limit BUY: BTCUSDT at 70000 for 0.001\n" +
+			"  100x futures order place --limit --symbol BTCUSDT --side buy --size 0.001 --price 70000\n\n" +
+			"# Market SELL: BTCUSDT for 0.001\n" +
+			"  100x futures order place --market --symbol BTCUSDT --side sell --size 0.001\n\n" +
+			"# Limit BUY with attached SL 68000 and TP 76000\n" +
+			"  100x futures order place --limit --symbol BTCUSDT --side buy --size 0.001 --price 70000 \\\n" +
+			"      --sl-price 68000 --tp-price 76000",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPlace(cmd.Context(), opts)
 		},
 	}
-	c.Flags().StringVar(&opts.Type, "type", "limit", "Order type: limit | market")
+	c.Flags().BoolVar(&opts.Limit, "limit", false, "Place a limit order (requires --price)")
+	c.Flags().BoolVar(&opts.Market, "market", false, "Place a market order")
+	c.Flags().StringVar(&opts.Symbol, "symbol", "", "Trading pair, e.g. BTCUSDT")
 	c.Flags().StringVar(&opts.Side, "side", "", "Order side: buy | sell")
-	c.Flags().StringVar(&opts.Price, "price", "", "Limit price; required for limit orders")
+	c.Flags().StringVar(&opts.Price, "price", "", "Limit price")
 	c.Flags().StringVar(&opts.Size, "size", "", "Order quantity")
 	c.Flags().StringVar(&opts.ClientID, "client-id", "", "Client-supplied order ID")
 	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "Time in force for limit orders: GTC | IOC | FOK | POST_ONLY")
-	c.Flags().StringVar(&opts.SL, "sl", "", "Attach stop-loss at this price")
-	c.Flags().StringVar(&opts.SLBy, "sl-by", "LAST", "Stop-loss price feed: LAST | INDEX | MARK")
-	c.Flags().StringVar(&opts.TP, "tp", "", "Attach take-profit at this price")
-	c.Flags().StringVar(&opts.TPBy, "tp-by", "LAST", "Take-profit price feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.SLPrice, "sl-price", "", "Attach stop-loss at this price")
+	c.Flags().StringVar(&opts.SLTriggerBy, "sl-trigger-by", "LAST", "Stop-loss trigger feed: LAST | INDEX | MARK")
+	c.Flags().StringVar(&opts.TPPrice, "tp-price", "", "Attach take-profit at this price")
+	c.Flags().StringVar(&opts.TPTriggerBy, "tp-trigger-by", "LAST", "Take-profit trigger feed: LAST | INDEX | MARK")
+	_ = c.MarkFlagRequired("symbol")
 	_ = c.MarkFlagRequired("side")
 	_ = c.MarkFlagRequired("size")
-	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
+	c.MarkFlagsMutuallyExclusive("limit", "market")
+	c.MarkFlagsOneRequired("limit", "market")
+	c.MarkFlagsRequiredTogether("limit", "price")
+	_ = c.RegisterFlagCompletionFunc("symbol", complete.Symbols)
 	_ = c.RegisterFlagCompletionFunc("side", complete.OrderSides)
 	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
 	_ = c.RegisterFlagCompletionFunc("tif", complete.TimeInForce)
-	_ = c.RegisterFlagCompletionFunc("sl-by", complete.TriggerFeeds)
-	_ = c.RegisterFlagCompletionFunc("tp-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("sl-trigger-by", complete.TriggerFeeds)
+	_ = c.RegisterFlagCompletionFunc("tp-trigger-by", complete.TriggerFeeds)
 	return c
 }
 
@@ -80,9 +90,9 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return err
 	}
 	for name, value := range map[string]string{
-		"--price": opts.Price,
-		"--sl":    opts.SL,
-		"--tp":    opts.TP,
+		"--price":    opts.Price,
+		"--sl-price": opts.SLPrice,
+		"--tp-price": opts.TPPrice,
 	} {
 		if err := clierr.PositiveNumber(name, value); err != nil {
 			return err
@@ -111,7 +121,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return clierr.Usagef("unknown --tif %q (want GTC|FOK|IOC|POST_ONLY)", opts.TIF)
 	}
 	var slBy futures.StopTriggerType
-	switch strings.ToUpper(opts.SLBy) {
+	switch strings.ToUpper(opts.SLTriggerBy) {
 	case "", "LAST":
 		slBy = futures.StopTriggerTypeLast
 	case "INDEX":
@@ -119,10 +129,10 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	case "MARK":
 		slBy = futures.StopTriggerTypeMark
 	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.SLBy)
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.SLTriggerBy)
 	}
 	var tpBy futures.StopTriggerType
-	switch strings.ToUpper(opts.TPBy) {
+	switch strings.ToUpper(opts.TPTriggerBy) {
 	case "", "LAST":
 		tpBy = futures.StopTriggerTypeLast
 	case "INDEX":
@@ -130,28 +140,24 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	case "MARK":
 		tpBy = futures.StopTriggerTypeMark
 	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TPBy)
+		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TPTriggerBy)
 	}
-	isStop := opts.SL != "" || opts.TP != ""
+	isStop := opts.SLPrice != "" || opts.TPPrice != ""
 	f := opts.Factory
-	if opts.Type == "market" && opts.Price != "" {
-		return clierr.Usagef("--price is not allowed for market orders")
-	}
-	switch opts.Type {
-	case "limit":
-		if opts.Price == "" {
-			return clierr.Usagef("--price is required for limit orders")
-		}
+	switch {
+	case opts.Limit:
 		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
-			Market:        opts.Symbol,
-			Side:          side,
-			Price:         opts.Price,
-			Quantity:      opts.Size,
-			ClientOID:     opts.ClientID,
-			TIF:           tif,
-			IsStop:        isStop,
-			StopLossPrice: opts.SL, StopLossPriceType: slBy,
-			TakeProfitPrice: opts.TP, TakeProfitPriceType: tpBy,
+			Market:              opts.Symbol,
+			Side:                side,
+			Price:               opts.Price,
+			Quantity:            opts.Size,
+			ClientOID:           opts.ClientID,
+			TIF:                 tif,
+			IsStop:              isStop,
+			StopLossPrice:       opts.SLPrice,
+			StopLossPriceType:   slBy,
+			TakeProfitPrice:     opts.TPPrice,
+			TakeProfitPriceType: tpBy,
 		})
 		if err != nil {
 			return err
@@ -163,15 +169,17 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 				{Key: "Status", Value: format.OrderStatus(f.IO, resp.Status)},
 			})
 		})
-	case "market":
+	case opts.Market:
 		resp, err := f.Client.Order.MarketOrder(ctx, futures.MarketOrderReq{
-			Market:        opts.Symbol,
-			Side:          side,
-			Quantity:      opts.Size,
-			ClientOID:     opts.ClientID,
-			IsStop:        isStop,
-			StopLossPrice: opts.SL, StopLossPriceType: slBy,
-			TakeProfitPrice: opts.TP, TakeProfitPriceType: tpBy,
+			Market:              opts.Symbol,
+			Side:                side,
+			Quantity:            opts.Size,
+			ClientOID:           opts.ClientID,
+			IsStop:              isStop,
+			StopLossPrice:       opts.SLPrice,
+			StopLossPriceType:   slBy,
+			TakeProfitPrice:     opts.TPPrice,
+			TakeProfitPriceType: tpBy,
 		})
 		if err != nil {
 			return err
@@ -184,5 +192,5 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			})
 		})
 	}
-	return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
+	return clierr.Usagef("must set --limit or --market")
 }

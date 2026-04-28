@@ -27,7 +27,7 @@ func NewCmdOrder(f *factory.Factory) *cobra.Command {
 		Example: "# List open orders for BTCUSDT only\n" +
 			"  100x futures order list --symbol BTCUSDT\n\n" +
 			"# Place a BUY limit order on BTCUSDT at 70000 for size 0.001\n" +
-			"  100x futures order place BTCUSDT --side buy --price 70000 --size 0.001\n\n" +
+			"  100x futures order place --limit --symbol BTCUSDT --side buy --size 0.001 --price 70000\n\n" +
 			"# Cancel one open BTCUSDT order by id\n" +
 			"  100x futures order cancel BTCUSDT <order-id>",
 	}

@@ -34,7 +34,7 @@ func TestRunPlaceLimit(t *testing.T) {
 		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
 	}
 	opts := &PlaceOptions{
-		Type: "limit", Symbol: "BTCUSDT", Side: "buy",
+		Limit: true, Symbol: "BTCUSDT", Side: "buy",
 		Price: "70000", Size: "0.1",
 		Factory: f,
 	}
@@ -47,16 +47,18 @@ func TestRunPlaceLimit(t *testing.T) {
 	}
 }
 
-// TestRunPlaceUnknownType errors out before calling the SDK.
-func TestRunPlaceUnknownType(t *testing.T) {
+// TestRunPlaceMissingType errors out before calling the SDK when neither
+// --limit nor --market is set. (Cobra's MarkFlagsOneRequired catches this at
+// parse time too; this guards the runPlace direct-call path.)
+func TestRunPlaceMissingType(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	f := &factory.Factory{
 		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
 		IO:     output.New(),
 	}
-	opts := &PlaceOptions{Type: "stop", Symbol: "BTC", Side: "buy", Size: "1", Factory: f}
+	opts := &PlaceOptions{Symbol: "BTC", Side: "buy", Size: "1", Factory: f}
 	err := runPlace(context.Background(), opts)
-	if err == nil || !strings.Contains(err.Error(), "unknown --type") {
+	if err == nil || !strings.Contains(err.Error(), "must set --limit or --market") {
 		t.Errorf("unexpected err: %v", err)
 	}
 }

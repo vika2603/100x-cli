@@ -298,7 +298,7 @@ func TestRequiredFlagPointsToSubcommand(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, stderr, err := executeRoot(t, "futures", "order", "place", "BTCUSDT")
+	_, stderr, err := executeRoot(t, "futures", "order", "place")
 	if err == nil {
 		t.Fatal("expected error")
 	}
