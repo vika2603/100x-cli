@@ -1,12 +1,11 @@
 # 100x-cli
 
-Command-line client for the 100x futures-trading API.
+Command-line client for the 100x exchange.
 
 ## Features
 
-- Place, cancel, and list orders; attach SL / TP triggers
-- View positions, balances, and live market state
-- Manage multiple profiles; secrets stored in the OS keychain
+- Multiple profiles; secrets stored in the OS keychain
+- Futures: orders, SL / TP triggers, positions, balances, market state
 - `--json` / `--jq` for scripting; human-readable tables by default
 - Shell completion for bash, zsh, and fish
 
