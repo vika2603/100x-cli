@@ -1,13 +1,18 @@
 package session
 
 import (
+	"context"
 	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/zalando/go-keyring"
 
+	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/config"
 	"github.com/vika2603/100x-cli/internal/credential"
 )
@@ -171,6 +176,68 @@ func TestLoadPublicMissingEndpointReturnsErrNoEndpoint(t *testing.T) {
 	_, err := Load(LoadOptions{Public: true, Timeout: time.Second})
 	if !errors.Is(err, config.ErrNoEndpoint) {
 		t.Fatalf("err=%v want ErrNoEndpoint", err)
+	}
+}
+
+// TestLoadAppliesPerRequestTimeout verifies that LoadOptions.Timeout is wired
+// through to the underlying http.Client.Timeout so each HTTP attempt is
+// bounded independently. A fast-failing timeout against a hanging server is
+// the cheapest behavioural proof that the field is no longer dead.
+func TestLoadAppliesPerRequestTimeout(t *testing.T) {
+	isolate(t)
+
+	hang := make(chan struct{})
+	t.Cleanup(func() { close(hang) })
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-hang:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("E100X_ENDPOINT", srv.URL)
+
+	sess, err := Load(LoadOptions{Public: true, Timeout: 100 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	ctx := futures.WithRetryPolicy(context.Background(), futures.NoRetry)
+	start := time.Now()
+	_, err = sess.Client.Market.MarketList(ctx, futures.MarketListReq{})
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("MarketList must fail when the server hangs")
+	}
+	if elapsed > time.Second {
+		t.Errorf("elapsed=%v want <1s; per-request timeout did not fire", elapsed)
+	}
+	var ne net.Error
+	if !errors.As(err, &ne) || !ne.Timeout() {
+		t.Errorf("err=%v want a net.Error with Timeout()=true", err)
+	}
+}
+
+// TestLoadDefaultsToBackstopWhenTimeoutZero covers the disable path: passing
+// Timeout=0 leaves the client free of a per-request cap from the flag, so a
+// short-running server completes normally instead of being cut off.
+func TestLoadDefaultsToBackstopWhenTimeoutZero(t *testing.T) {
+	isolate(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"code":0,"data":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("E100X_ENDPOINT", srv.URL)
+
+	sess, err := Load(LoadOptions{Public: true, Timeout: 0})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	ctx := futures.WithRetryPolicy(context.Background(), futures.NoRetry)
+	if _, err := sess.Client.Market.MarketList(ctx, futures.MarketListReq{}); err != nil {
+		t.Fatalf("MarketList with Timeout=0: %v", err)
 	}
 }
 

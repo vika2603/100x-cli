@@ -2,7 +2,6 @@
 package root
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,13 +100,6 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		f.Timeout = gf.timeout
 		f.ProfileFlag = gf.profile
 		f.Auth = factory.LookupAuth(c)
-
-		// --timeout bounds the whole command, including retries.
-		if gf.timeout > 0 {
-			ctx, cancel := context.WithTimeout(c.Context(), gf.timeout) //nolint:gosec // cancel runs via cobra.OnFinalize below
-			c.SetContext(ctx)
-			cobra.OnFinalize(cancel)
-		}
 
 		return nil
 	}

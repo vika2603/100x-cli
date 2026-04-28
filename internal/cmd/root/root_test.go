@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
@@ -263,6 +266,44 @@ func TestAuthLookupFallsThroughCleanly(t *testing.T) {
 	c := &cobra.Command{Use: "x"}
 	if got := factory.LookupAuth(c); got != factory.AuthNone {
 		t.Errorf("LookupAuth(unmarked)=%q want AuthNone", got)
+	}
+}
+
+// TestTimeoutFlagFiresOnHangingServer is the regression guard for the
+// previous bug where --timeout was attached to the cobra ctx (so it covered
+// interactive prompts and had no effect on http.Client) instead of being
+// applied per HTTP request. The flag must now bound a single round-trip
+// against a hanging server in roughly the configured duration, and the
+// resulting error must surface through summarizeNetworkError.
+func TestTimeoutFlagFiresOnHangingServer(t *testing.T) {
+	hang := make(chan struct{})
+	t.Cleanup(func() { close(hang) })
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-hang:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("E100X_ENDPOINT", srv.URL)
+	t.Setenv("E100X_PROFILE", "")
+	keyring.MockInit()
+
+	start := time.Now()
+	_, stderr, err := executeRoot(t, "--timeout", "150ms", "futures", "market", "list")
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	// Retry policy is MaxAttempts=3 with sub-second backoff; allow generous
+	// headroom but still well under the 5-minute backstop.
+	if elapsed > 5*time.Second {
+		t.Errorf("elapsed=%v want <5s; --timeout did not bound the request", elapsed)
+	}
+	if !strings.Contains(stderr, "network timeout while contacting 100x API") {
+		t.Errorf("stderr=%q want network-timeout summary", stderr)
 	}
 }
 
