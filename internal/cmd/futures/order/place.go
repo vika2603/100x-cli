@@ -17,18 +17,18 @@ import (
 
 // PlaceOptions captures the flag-bound state of `order place`.
 type PlaceOptions struct {
-	Symbol      string
-	Limit       bool
-	Market      bool
-	Side        string
-	Price       string
-	Size        string
-	ClientID    string
-	TIF         string
-	SLPrice     string
-	SLTriggerBy string
-	TPPrice     string
-	TPTriggerBy string
+	Symbol        string
+	Limit         bool
+	Market        bool
+	Side          string
+	Price         string
+	Size          string
+	ClientOrderID string
+	TIF           string
+	SLPrice       string
+	SLTriggerBy   string
+	TPPrice       string
+	TPTriggerBy   string
 
 	Factory *factory.Factory
 }
@@ -63,7 +63,7 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Side, "side", "", "Order side: buy | sell")
 	c.Flags().StringVar(&opts.Price, "price", "", "Limit price")
 	c.Flags().StringVar(&opts.Size, "size", "", "Order quantity")
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "Client-supplied order ID")
+	c.Flags().StringVar(&opts.ClientOrderID, "client-order-id", "", "Client-supplied order ID")
 	c.Flags().StringVar(&opts.TIF, "tif", "GTC", "Time in force for limit orders: GTC | IOC | FOK | POST_ONLY")
 	c.Flags().StringVar(&opts.SLPrice, "sl-price", "", "Attach stop-loss at this price")
 	c.Flags().StringVar(&opts.SLTriggerBy, "sl-trigger-by", "LAST", "Stop-loss trigger feed: LAST | INDEX | MARK")
@@ -151,7 +151,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			Side:                side,
 			Price:               opts.Price,
 			Quantity:            opts.Size,
-			ClientOID:           opts.ClientID,
+			ClientOID:           opts.ClientOrderID,
 			TIF:                 tif,
 			IsStop:              isStop,
 			StopLossPrice:       opts.SLPrice,
@@ -174,7 +174,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			Market:              opts.Symbol,
 			Side:                side,
 			Quantity:            opts.Size,
-			ClientOID:           opts.ClientID,
+			ClientOID:           opts.ClientOrderID,
 			IsStop:              isStop,
 			StopLossPrice:       opts.SLPrice,
 			StopLossPriceType:   slBy,

@@ -19,12 +19,12 @@ import (
 
 // CloseOptions captures the flag-bound state of `position close`.
 type CloseOptions struct {
-	Symbol     string
-	PositionID string
-	Type       string
-	Price      string
-	Size       string
-	ClientID   string
+	Symbol        string
+	PositionID    string
+	Type          string
+	Price         string
+	Size          string
+	ClientOrderID string
 
 	Factory *factory.Factory
 }
@@ -52,7 +52,7 @@ func NewCmdClose(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.Type, "type", "limit", "Execution type: limit | market")
 	c.Flags().StringVar(&opts.Price, "price", "", "Limit price; required for limit orders")
 	c.Flags().StringVar(&opts.Size, "size", "", "Quantity to close")
-	c.Flags().StringVar(&opts.ClientID, "client-id", "", "Client-supplied order ID")
+	c.Flags().StringVar(&opts.ClientOrderID, "client-order-id", "", "Client-supplied order ID")
 	_ = c.RegisterFlagCompletionFunc("type", complete.OrderTypes)
 	_ = c.RegisterFlagCompletionFunc("size", complete.OrderSizes)
 	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
@@ -84,7 +84,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		}
 		resp, err := f.Client.Position.LimitClosePosition(ctx, futures.LimitClosePositionReq{
 			Market: opts.Symbol, PositionID: positionID,
-			Price: opts.Price, Quantity: opts.Size, ClientOID: opts.ClientID,
+			Price: opts.Price, Quantity: opts.Size, ClientOID: opts.ClientOrderID,
 		})
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		}
 		resp, err := f.Client.Position.MarketClosePosition(ctx, futures.MarketClosePositionReq{
 			Market: opts.Symbol, PositionID: positionID,
-			ClientOID: opts.ClientID,
+			ClientOID: opts.ClientOrderID,
 		})
 		if err != nil {
 			return err
