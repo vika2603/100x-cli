@@ -42,6 +42,7 @@ type options struct {
 	targetVersion string
 	check         bool
 	force         bool
+	dryRun        bool
 }
 
 type renderPayload struct {
@@ -61,7 +62,8 @@ func NewCmdUpgrade(f *factory.Factory) *cobra.Command {
 		Short: "Upgrade 100x to the latest release",
 		Long: "Download a release archive from GitHub, verify its SHA-256, and replace " +
 			"the running binary in place. Use --version to pin a tag, --check to inspect " +
-			"availability without installing, and --force to reinstall the current target.",
+			"availability, --dry-run to print what would happen without downloading, and " +
+			"--force to reinstall the current target.",
 		Example: "# Upgrade to the latest release\n" +
 			"  100x upgrade\n\n" +
 			"# Only check whether a newer release is available\n" +
@@ -74,7 +76,8 @@ func NewCmdUpgrade(f *factory.Factory) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&opts.targetVersion, "version", "", "Release tag to install (default: latest)")
-	cmd.Flags().BoolVar(&opts.check, "check", false, "Check for updates without installing")
+	cmd.Flags().BoolVar(&opts.check, "check", false, "Check for updates without downloading")
+	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "Print what would happen without downloading")
 	cmd.Flags().BoolVar(&opts.force, "force", false, "Reinstall even when already at the target version")
 	_ = cmd.RegisterFlagCompletionFunc("version", cobra.NoFileCompletions)
 	return cmd
@@ -149,6 +152,23 @@ func run(f *factory.Factory, opts options) error {
 			UpdateAvailable: false,
 			Action:          "noop",
 		}, func() error { return nil })
+	}
+
+	if opts.dryRun {
+		f.IO.Println(fmt.Sprintf("Dry run: would install %s over %s (no download performed).", tag, current))
+		return f.IO.Render(renderPayload{
+			Path:            binPath,
+			Current:         current,
+			Latest:          tag,
+			UpdateAvailable: updateAvailable,
+			Action:          "dry-run",
+		}, func() error {
+			return f.IO.Object([]output.KV{
+				{Key: "Path", Value: binPath},
+				{Key: "Current", Value: current},
+				{Key: "Would install", Value: tag},
+			})
+		})
 	}
 
 	if err := install(ctx, client, f.IO, tag, binPath); err != nil {
