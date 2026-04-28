@@ -12,3 +12,7 @@ var Commit = "none"
 
 // BuildDate is the RFC3339 build timestamp.
 var BuildDate = "unknown"
+
+// RepoSlug is the "owner/repo" GitHub identifier `100x upgrade` queries.
+// Injected at build time via -ldflags; empty disables the command.
+var RepoSlug = ""

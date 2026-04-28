@@ -20,6 +20,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	futuresGroup "github.com/vika2603/100x-cli/internal/cmd/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/profile"
+	"github.com/vika2603/100x-cli/internal/cmd/upgrade"
 	"github.com/vika2603/100x-cli/internal/config"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/session"
@@ -151,7 +152,9 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	completionCmd.GroupID = "tools"
 	versionCmd := newCmdVersion(f)
 	versionCmd.GroupID = "tools"
-	cmd.AddCommand(futuresCmd, profileCmd, completionCmd, versionCmd)
+	upgradeCmd := upgrade.NewCmdUpgrade(f)
+	upgradeCmd.GroupID = "tools"
+	cmd.AddCommand(futuresCmd, profileCmd, completionCmd, versionCmd, upgradeCmd)
 	configureHelp(cmd)
 	configureUsageErrors(cmd)
 
