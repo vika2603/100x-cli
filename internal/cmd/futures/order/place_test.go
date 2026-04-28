@@ -32,6 +32,7 @@ func TestRunPlaceLimit(t *testing.T) {
 	f := &factory.Factory{
 		Client: futures.NewWithDoer(doer),
 		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
+		Yes:    true,
 	}
 	opts := &PlaceOptions{
 		Limit: true, Symbol: "BTCUSDT", Side: "buy",

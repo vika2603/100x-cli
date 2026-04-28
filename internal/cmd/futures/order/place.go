@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/prompt"
 )
 
 // PlaceOptions captures the flag-bound state of `order place`.
@@ -142,8 +145,18 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	default:
 		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TPTriggerBy)
 	}
+	if !opts.Limit && !opts.Market {
+		return clierr.Usagef("must set --limit or --market")
+	}
 	isStop := opts.SLPrice != "" || opts.TPPrice != ""
 	f := opts.Factory
+	ok, err := prompt.ConfirmDestructive(placeConfirmTitle(opts), f.Yes)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+	}
 	switch {
 	case opts.Limit:
 		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
@@ -192,5 +205,29 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			})
 		})
 	}
-	return clierr.Usagef("must set --limit or --market")
+	return nil
+}
+
+// placeConfirmTitle renders a one-line summary of the order for the
+// destructive-op prompt: side, size, symbol, type/price, and any attached
+// SL/TP triggers. Bare orders read like "Place LIMIT BUY 0.001 BTCUSDT
+// at 70000?"; orders with brackets append "with SL X, TP Y".
+func placeConfirmTitle(opts *PlaceOptions) string {
+	typeLabel := "MARKET"
+	priceClause := ""
+	if opts.Limit {
+		typeLabel = "LIMIT"
+		priceClause = fmt.Sprintf(" at %s", opts.Price)
+	}
+	var attached string
+	switch {
+	case opts.SLPrice != "" && opts.TPPrice != "":
+		attached = fmt.Sprintf(" with SL %s, TP %s", opts.SLPrice, opts.TPPrice)
+	case opts.SLPrice != "":
+		attached = fmt.Sprintf(" with SL %s", opts.SLPrice)
+	case opts.TPPrice != "":
+		attached = fmt.Sprintf(" with TP %s", opts.TPPrice)
+	}
+	return fmt.Sprintf("Place %s %s %s %s%s%s?",
+		typeLabel, strings.ToUpper(opts.Side), opts.Size, opts.Symbol, priceClause, attached)
 }
