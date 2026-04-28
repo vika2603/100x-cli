@@ -31,8 +31,8 @@ func newCmdHistory(f *factory.Factory) *cobra.Command {
 		Short: "List asset-change history",
 		Long: "List asset-change history for the current account.\n\n" +
 			"Results are paginated. Use --currency to narrow to one asset and --type to filter by\n" +
-			"business type such as deposit, withdraw, faucet, fee, or trade. The gateway accepts\n" +
-			"more values than this list; an unknown --type returns no rows rather than an error.",
+			"business type such as deposit, withdraw, faucet, fee, or trade. Other types may also\n" +
+			"be accepted; an unknown --type returns no rows rather than an error.",
 		Example: "# Show recent USDT balance history with 20 items per page\n" +
 			"  100x futures balance history --currency USDT --page-size 20\n\n" +
 			"# Show only faucet records in USDT balance history\n" +

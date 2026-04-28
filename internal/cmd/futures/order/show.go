@@ -29,7 +29,9 @@ func NewCmdShow(f *factory.Factory) *cobra.Command {
 		Use:   "show <symbol> <order-id>",
 		Short: "Show one order's full record",
 		Example: "# Show one BTCUSDT order with status, SL/TP, client id, and timestamps\n" +
-			"  100x futures order show BTCUSDT <order-id>",
+			"  100x futures order show BTCUSDT <order-id>\n\n" +
+			"# Extract status, filled size, and SL/TP as JSON\n" +
+			"  100x --json futures order show BTCUSDT <order-id> --jq '{status, filled, sl: .stop_loss_price, tp: .take_profit_price}'",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: complete.OpenOrderArg,
 		RunE: func(cmd *cobra.Command, args []string) error {

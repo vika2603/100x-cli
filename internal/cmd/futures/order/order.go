@@ -17,7 +17,7 @@ func NewCmdOrder(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:     "order",
 		Aliases: []string{"o"},
-		Short:   "Limit/market order operations",
+		Short:   "Place, inspect, modify, and cancel orders",
 		Long: "Place, inspect, modify, and cancel futures orders.\n\n" +
 			"Use `order place` for new orders, `order list` and `order show` to inspect existing\n" +
 			"orders, `order edit` to rebook an open limit order, and `order cancel` / `cancel-all`\n" +

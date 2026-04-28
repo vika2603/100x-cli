@@ -16,7 +16,7 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List all tradable instruments",
-		Long: "List futures markets known to the gateway.\n\n" +
+		Long: "List the futures markets available on the exchange.\n\n" +
 			"By default the command shows only currently tradable markets. Use\n" +
 			"--include-unavailable to include markets that exist but are not currently available.",
 		Example: "# List only markets that are currently tradable\n" +

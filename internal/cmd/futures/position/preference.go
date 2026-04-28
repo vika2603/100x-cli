@@ -30,8 +30,9 @@ func NewCmdPreference(f *factory.Factory) *cobra.Command {
 		Use:     "preference <symbol>",
 		Aliases: []string{"pref"},
 		Short:   "Read or update per-market preferences",
-		Long: "Read or update per-market preferences.\n\n" +
-			"When updating only one field, the CLI preserves the other field automatically because the gateway expects both values together.",
+		Long: "Read or update per-market preferences (leverage and margin mode).\n\n" +
+			"Pass no flags to read the current settings. Pass --leverage, --mode, or both to update;\n" +
+			"the field you omit is preserved automatically.",
 		Example: "# Show the current leverage and margin mode for BTCUSDT\n" +
 			"  100x futures preference BTCUSDT\n\n" +
 			"# Set BTCUSDT leverage to 25 and preserve the current mode\n" +

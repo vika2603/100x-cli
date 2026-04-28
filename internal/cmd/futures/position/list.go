@@ -63,7 +63,9 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "history",
 		Short: "List closed positions",
-		Example: "# Show recently closed BTCUSDT positions with page size 20\n" +
+		Example: "# Show recently closed positions across every market\n" +
+			"  100x futures position history --page-size 20\n\n" +
+			"# Show recently closed BTCUSDT positions with page size 20\n" +
 			"  100x futures position history --symbol BTCUSDT --page-size 20\n\n" +
 			"# Extract position id, side, open, close, pnl, and roe as JSON\n" +
 			"  100x --json futures position history --symbol BTCUSDT --page-size 20 --jq 'map({position_id, side, open_price, close_price, profit_real, roe})'",

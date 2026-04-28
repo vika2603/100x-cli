@@ -17,14 +17,13 @@ func NewCmdTrigger(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:     "trigger",
 		Aliases: []string{"t"},
-		Short:   "Condition-order (SL / TP) operations",
+		Short:   "Manage stop-loss and take-profit triggers",
 		Long: "Manage standalone trigger orders and attached SL/TP.\n\n" +
 			"`trigger place` creates a standalone conditional order. `trigger attach` manages\n" +
 			"stop-loss and take-profit on existing orders or positions. `trigger list`, `edit`,\n" +
 			"and `cancel` inspect or mutate pending trigger state.\n\n" +
-			"Attached order-level SL/TP has backend constraints because the gateway applies\n" +
-			"them at position scope. The command-specific help explains what the CLI preserves\n" +
-			"automatically and when you must intervene manually.",
+			"Order-level SL and TP are shared across all open orders on the same position.\n" +
+			"See each subcommand's help for the constraints this implies.",
 		Example: "# List active triggers for BTCUSDT\n" +
 			"  100x futures trigger list BTCUSDT\n\n" +
 			"# Place a standalone BUY trigger on BTCUSDT at trigger price 65000\n" +

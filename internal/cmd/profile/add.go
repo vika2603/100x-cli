@@ -28,7 +28,11 @@ func newCmdAdd(f *factory.Factory) *cobra.Command {
 		Long: "Add or update one credential profile.\n\n" +
 			"Each profile is a name plus a client ID and its client key. The client key is prompted for when --client-key is omitted and is never echoed back.",
 		Example: "# Add profile test and prompt for its client key\n" +
-			"  100x profile add test --client-id <CID>",
+			"  100x profile add test --client-id <CID>\n\n" +
+			"# Add profile test non-interactively (e.g. in CI) by passing the key directly\n" +
+			"  100x profile add test --client-id <CID> --client-key <KEY>\n\n" +
+			"# Add profile test and make it the default for future commands\n" +
+			"  100x profile add test --client-id <CID> --default",
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.Name = args[0]

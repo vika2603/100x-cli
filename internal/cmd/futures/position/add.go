@@ -30,7 +30,7 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 	opts := &AddOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "add <symbol>",
-		Short: "Top up an existing position (limit or market)",
+		Short: "Add to an existing position (limit or market)",
 		Example: "# Add size 0.001 to one BTCUSDT position with a limit order at 70000\n" +
 			"  100x futures position add BTCUSDT --position-id <position-id> --price 70000 --size 0.001\n\n" +
 			"# Add size 0.001 to one BTCUSDT position at market\n" +

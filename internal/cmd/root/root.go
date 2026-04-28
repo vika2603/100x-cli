@@ -58,10 +58,10 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		Short: "Command-line interface for the 100X exchange.",
 		Example: "# Add a profile named test (you will be prompted for the secret)\n" +
 			"  100x profile add test --client-id <CID>\n\n" +
-			"# Run one command against a different API host\n" +
-			"  E100X_ENDPOINT=https://api.example.com 100x futures market state BTCUSDT\n\n" +
 			"# Show the latest ticker-style state for BTCUSDT\n" +
-			"  100x futures market state BTCUSDT",
+			"  100x futures market state BTCUSDT\n\n" +
+			"# List your open positions across every market\n" +
+			"  100x futures position list",
 		SilenceUsage:               true,
 		SilenceErrors:              true,
 		SuggestionsMinimumDistance: 2,

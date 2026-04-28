@@ -31,9 +31,10 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 	opts := &DealsOptions{Factory: f, Page: 1, PageSize: 20}
 	c := &cobra.Command{
 		Use:   "deals",
-		Short: "List trade-level fill records",
-		Long: "List trade-level fill records.\n\n" +
-			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
+		Short: "List your trade fills",
+		Long: "List your trade fills (private executions on your account).\n\n" +
+			"Use --symbol to narrow to one market and --since / --until to window the time range.\n" +
+			"When --since is set and --until is omitted, the current time is used as the end of the window.",
 		Example: "# List recent private fills for BTCUSDT with page size 20\n" +
 			"  100x futures order deals --symbol BTCUSDT --page-size 20\n\n" +
 			"# List private BTCUSDT fills from the last 24 hours\n" +

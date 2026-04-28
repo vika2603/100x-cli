@@ -17,8 +17,8 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:     "futures",
 		Aliases: []string{"f"},
-		Short:   "Futures-product commands",
-		Long: "Operate on the futures product surface.\n\n" +
+		Short:   "Trade futures, manage positions, and read market data",
+		Long: "Trade futures, manage positions, and read market data.\n\n" +
 			"This group contains trading commands for orders, triggers, and positions, plus account\n" +
 			"and market-data commands. Most write operations require a profile with private credentials;\n" +
 			"the `market` subtree is public and can be used without a secret.\n\n" +

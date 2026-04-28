@@ -36,7 +36,9 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 		Short:   "List open or finished orders",
 		Long: "List open or finished orders.\n\n" +
 			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
-		Example: "# List open orders for BTCUSDT only\n" +
+		Example: "# List every open order in the account\n" +
+			"  100x futures order list\n\n" +
+			"# List open orders for BTCUSDT only\n" +
 			"  100x futures order list --symbol BTCUSDT\n\n" +
 			"# List finished BTCUSDT orders from the last 24 hours with page size 50\n" +
 			"  100x futures order list --finished --symbol BTCUSDT --since now-24h --page-size 50\n\n" +

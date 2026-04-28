@@ -60,14 +60,15 @@ func NewCmdUpgrade(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade 100x to the latest release",
-		Long: "Download a release archive from GitHub, verify its SHA-256, and replace " +
-			"the running binary in place. Use --version to pin a tag, --check to inspect " +
-			"availability, --dry-run to print what would happen without downloading, and " +
-			"--force to reinstall the current target.",
+		Long: "Replace the running 100x binary with a newer release. Use --version to install " +
+			"a specific tag, --check to inspect availability, --dry-run to print what would " +
+			"happen without downloading, and --force to reinstall the current target.",
 		Example: "# Upgrade to the latest release\n" +
 			"  100x upgrade\n\n" +
 			"# Only check whether a newer release is available\n" +
 			"  100x upgrade --check\n\n" +
+			"# Print what would happen without actually downloading\n" +
+			"  100x upgrade --dry-run\n\n" +
 			"# Install a specific tag\n" +
 			"  100x upgrade --version v1.2.3",
 		Args: cobra.NoArgs,

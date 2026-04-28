@@ -24,7 +24,7 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 	opts := &StateOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "state [symbol]",
-		Short: "Show one or all market states",
+		Short: "Show ticker state for one or all markets",
 		Long: "Show ticker-style market state.\n\n" +
 			"Without a symbol, the command prints a table for every market. With a symbol, it prints\n" +
 			"one detailed record including last price, index price, mark price, funding fields, and\n" +

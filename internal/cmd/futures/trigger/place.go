@@ -30,9 +30,10 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 	opts := &PlaceOptions{Factory: f}
 	c := &cobra.Command{
 		Use:   "place <symbol>",
-		Short: "Place a standalone trigger (condition order)",
-		Long: "Place a standalone trigger (condition order).\n\n" +
-			"The CLI fetches the current price automatically when needed for gateway validation.",
+		Short: "Place a standalone conditional order",
+		Long: "Place a standalone conditional order that fires when the trigger price is reached.\n\n" +
+			"Pass --limit-price to submit a limit order on trigger; omit it to execute at market.\n" +
+			"Use --trigger-by to choose which feed (LAST, INDEX, or MARK) the trigger watches.",
 		Example: "# Place a BUY trigger on BTCUSDT that executes at market when 65000 is reached\n" +
 			"  100x futures trigger place BTCUSDT --side buy --trigger-price 65000 --size 0.001\n\n" +
 			"# Place a SELL trigger that submits a limit order at 81950 when 82000 is reached\n" +

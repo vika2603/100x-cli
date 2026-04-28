@@ -33,7 +33,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 		Use:   "edit <symbol> <order-id>",
 		Short: "Modify an open limit order",
 		Long: "Modify an open limit order.\n\n" +
-			"The gateway rebooks edited limit orders as a new order id. The CLI re-attaches the same SL/TP on the new id when the backend can do so safely.",
+			"Edited limit orders are reissued with a new order id. Any attached SL/TP is re-attached\n" +
+			"automatically onto the new id when possible.",
 		Example: "# Rebook one BTCUSDT order to price 70500 and size 0.002\n" +
 			"  100x futures order edit BTCUSDT <order-id> --price 70500 --size 0.002",
 		Args:              cobra.ExactArgs(2),

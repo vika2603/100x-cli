@@ -57,8 +57,9 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 			"--trigger-by sets the feed for both sides (default LAST). --sl-trigger-by and\n" +
 			"--tp-trigger-by override that for one side, useful when SL and TP need different\n" +
 			"feeds (e.g. SL on MARK, TP on LAST).\n\n" +
-			"The gateway applies order-level SL/TP at position scope. The CLI preserves the\n" +
-			"unchanged side only when the backend can do so safely.",
+			"Order-level SL and TP are shared across all open orders on the same position.\n" +
+			"The unchanged side is preserved automatically when there is no conflict; otherwise\n" +
+			"the command errors so you can edit or cancel the conflicting trigger first.",
 		Example: "# Attach a stop-loss at 68000 (LAST feed by default)\n" +
 			"  100x futures trigger attach order BTCUSDT <order-id> --sl-price 68000\n\n" +
 			"# Set SL and TP together in one request, both on the LAST feed\n" +
@@ -152,7 +153,9 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 			"# SL and TP together with different feeds\n" +
 			"  100x futures trigger attach position BTCUSDT <position-id> \\\n" +
 			"      --sl-price 68000 --sl-trigger-by MARK \\\n" +
-			"      --tp-price 82000 --tp-trigger-by LAST",
+			"      --tp-price 82000 --tp-trigger-by LAST\n\n" +
+			"# Replace the unchanged side while attaching take-profit at 82000\n" +
+			"  100x futures trigger attach position BTCUSDT <position-id> --tp-price 82000 --clear-other",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: complete.OpenPositionArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
