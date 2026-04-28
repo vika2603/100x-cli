@@ -48,7 +48,11 @@ func runShow(ctx context.Context, opts *ShowOptions) error {
 	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
 		return err
 	}
-	resp, err := f.Client.Order.OrderDetail(ctx, futures.OrderDetailReq{
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Order.OrderDetail(ctx, futures.OrderDetailReq{
 		Market: opts.Symbol, OrderID: opts.OrderID,
 	})
 	if err != nil {

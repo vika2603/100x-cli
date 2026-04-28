@@ -57,8 +57,12 @@ func runPreference(ctx context.Context, opts *PreferenceOptions) error {
 	if err := clierr.PositiveNumber("--leverage", opts.Leverage); err != nil {
 		return err
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	if opts.Leverage == "" && opts.Mode == "" {
-		resp, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
+		resp, err := client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
 		if err != nil {
 			return err
 		}
@@ -69,16 +73,16 @@ func runPreference(ctx context.Context, opts *PreferenceOptions) error {
 			})
 		})
 	}
-	req, err := buildAdjustMarketPreferenceReq(ctx, f.Client, mergedPreferenceInput{
+	req, err := buildAdjustMarketPreferenceReq(ctx, client, mergedPreferenceInput{
 		Symbol: opts.Symbol, Leverage: opts.Leverage, PositionType: opts.Mode,
 	})
 	if err != nil {
 		return err
 	}
-	if _, err := f.Client.Setting.AdjustMarketPreference(ctx, req); err != nil {
+	if _, err := client.Setting.AdjustMarketPreference(ctx, req); err != nil {
 		return err
 	}
-	updated, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
+	updated, err := client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}

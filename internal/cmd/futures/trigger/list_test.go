@@ -24,10 +24,10 @@ func TestRunTriggerListEmptyHuman(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
+	)}
 	if err := runList(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -38,10 +38,10 @@ func TestRunTriggerListEmptyHuman(t *testing.T) {
 
 func TestRunTriggerListRejectsBadPageBeforeClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	opts := &ListOptions{Symbol: "BTCUSDT", Page: 0, PageSize: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
-		IO:     output.New(),
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Page: 0, PageSize: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
+		nil,
+	)}
 	err := runList(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "--page must be greater than 0") {
 		t.Fatalf("err=%v", err)

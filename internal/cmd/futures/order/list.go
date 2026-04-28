@@ -72,9 +72,13 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
 		return err
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	symbolFiltered := opts.Symbol != ""
 	if !opts.Finished {
-		resp, err := f.Client.Order.PendingOrder(ctx, futures.PendingOrderReq{
+		resp, err := client.Order.PendingOrder(ctx, futures.PendingOrderReq{
 			Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 		})
 		if err != nil {
@@ -94,7 +98,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
-	resp, err := f.Client.Order.FinishedOrder(ctx, futures.FinishedOrderReq{
+	resp, err := client.Order.FinishedOrder(ctx, futures.FinishedOrderReq{
 		Market: opts.Symbol, StartTime: startTime, EndTime: endTime,
 		Page: opts.Page, PageSize: opts.PageSize,
 	})

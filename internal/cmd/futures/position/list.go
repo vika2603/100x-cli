@@ -47,7 +47,11 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
-	resp, err := f.Client.Position.PendingPosition(ctx, futures.PendingPositionReq{Market: opts.Symbol})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Position.PendingPosition(ctx, futures.PendingPositionReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}
@@ -76,7 +80,11 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 			if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
 				return err
 			}
-			resp, err := f.Client.Position.PositionHistory(cmd.Context(), futures.PositionHistoryReq{
+			client, err := f.Futures()
+			if err != nil {
+				return err
+			}
+			resp, err := client.Position.PositionHistory(cmd.Context(), futures.PositionHistoryReq{
 				Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 			})
 			if err != nil {

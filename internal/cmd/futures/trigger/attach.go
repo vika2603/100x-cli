@@ -103,8 +103,12 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 		return err
 	}
 	f := opts.Factory
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	target := protection.Order{Symbol: opts.Symbol, OrderID: opts.OrderID}
-	current, err := target.Inspect(ctx, f.Client)
+	current, err := target.Inspect(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -112,10 +116,10 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 		return fmt.Errorf("cannot attach trigger to order %s: another pending order on the same position has active triggers; gateway applies order SL/TP by position, so edit/cancel that trigger first", opts.OrderID)
 	}
 	want := planAttachSides(current, opts.SLPrice, opts.TPPrice, slType, tpType, opts.ClearOther)
-	if err := target.Apply(ctx, f.Client, current, want); err != nil {
+	if err := target.Apply(ctx, client, current, want); err != nil {
 		return err
 	}
-	if err := target.Verify(ctx, f.Client, want); err != nil {
+	if err := target.Verify(ctx, client, want); err != nil {
 		return err
 	}
 	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to order", opts.OrderID)
@@ -188,13 +192,17 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 		return err
 	}
 	f := opts.Factory
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	target := protection.Position{Symbol: opts.Symbol, PositionID: opts.PositionID}
-	current, err := target.Inspect(ctx, f.Client)
+	current, err := target.Inspect(ctx, client)
 	if err != nil {
 		return err
 	}
 	want := planAttachSides(current, opts.SLPrice, opts.TPPrice, slType, tpType, opts.ClearOther)
-	if err := target.Apply(ctx, f.Client, current, want); err != nil {
+	if err := target.Apply(ctx, client, current, want); err != nil {
 		return err
 	}
 	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to position on", opts.Symbol)

@@ -72,7 +72,11 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 		return clierr.Usagef("--position-id is only valid in read mode")
 	}
 
-	pref, err := f.Client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	pref, err := client.Setting.MarketPreference(ctx, futures.MarketPreferenceReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,7 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 	if opts.Reduce != "" {
 		action, amount = futures.MarginActionRemove, opts.Reduce
 	}
-	if _, err := f.Client.Position.AdjustPositionMargin(ctx, futures.AdjustPositionMarginReq{
+	if _, err := client.Position.AdjustPositionMargin(ctx, futures.AdjustPositionMarginReq{
 		Market: opts.Symbol, Type: action, Quantity: amount,
 	}); err != nil {
 		return err
@@ -93,7 +97,11 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 }
 
 func renderMargin(ctx context.Context, f *factory.Factory, market, positionID string) error {
-	resolved, err := resolvePositionID(ctx, f.Client, market, positionID)
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resolved, err := resolvePositionID(ctx, client, market, positionID)
 	if err != nil {
 		return err
 	}
@@ -101,7 +109,7 @@ func renderMargin(ctx context.Context, f *factory.Factory, market, positionID st
 	if err != nil {
 		return err
 	}
-	resp, err := f.Client.Position.PositionAdjustableMargin(ctx, futures.PositionAdjustableMarginReq{Market: market, PositionID: id})
+	resp, err := client.Position.PositionAdjustableMargin(ctx, futures.PositionAdjustableMarginReq{Market: market, PositionID: id})
 	if err != nil {
 		return err
 	}

@@ -156,9 +156,13 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if !ok {
 		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	switch {
 	case opts.Limit:
-		resp, err := f.Client.Order.LimitOrder(ctx, futures.LimitOrderReq{
+		resp, err := client.Order.LimitOrder(ctx, futures.LimitOrderReq{
 			Market:              opts.Symbol,
 			Side:                side,
 			Price:               opts.Price,
@@ -182,7 +186,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 			})
 		})
 	case opts.Market:
-		resp, err := f.Client.Order.MarketOrder(ctx, futures.MarketOrderReq{
+		resp, err := client.Order.MarketOrder(ctx, futures.MarketOrderReq{
 			Market:              opts.Symbol,
 			Side:                side,
 			Quantity:            opts.Size,

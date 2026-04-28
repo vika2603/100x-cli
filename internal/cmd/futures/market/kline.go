@@ -69,7 +69,11 @@ func runKline(ctx context.Context, opts *KlineOptions) error {
 	if err != nil {
 		return err
 	}
-	resp, err := f.Client.Market.MarketKline(ctx, futures.MarketKlineReq{
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Market.MarketKline(ctx, futures.MarketKlineReq{
 		Market: opts.Symbol, Type: interval, StartTime: startTime, EndTime: endTime,
 	})
 	if err != nil {

@@ -42,7 +42,11 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 			if err := clierr.PositiveInt("--limit", opts.Limit); err != nil {
 				return err
 			}
-			resp, err := f.Client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Symbol, Merge: opts.TickSize})
+			client, err := f.Futures()
+			if err != nil {
+				return err
+			}
+			resp, err := client.Market.MarketDepth(cmd.Context(), futures.MarketDepthReq{Market: opts.Symbol, Merge: opts.TickSize})
 			if err != nil {
 				return err
 			}

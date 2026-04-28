@@ -46,7 +46,11 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 
 func runList(ctx context.Context, opts *ListOptions) error {
 	f := opts.Factory
-	resp, err := f.Client.Asset.AssetQuery(ctx, futures.AssetQueryReq{})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Asset.AssetQuery(ctx, futures.AssetQueryReq{})
 	if err != nil {
 		return err
 	}

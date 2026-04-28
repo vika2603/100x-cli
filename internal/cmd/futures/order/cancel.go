@@ -58,8 +58,12 @@ func runCancel(ctx context.Context, opts *CancelOptions) error {
 	if err := confirmCancelOrders(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	if len(opts.OrderIDs) == 1 {
-		resp, err := f.Client.Order.CancelOrder(ctx, futures.LimitOrderCancelReq{
+		resp, err := client.Order.CancelOrder(ctx, futures.LimitOrderCancelReq{
 			Market: opts.Symbol, OrderID: opts.OrderIDs[0],
 		})
 		if err != nil {
@@ -70,7 +74,7 @@ func runCancel(ctx context.Context, opts *CancelOptions) error {
 			return f.IO.Resultln("Cancelled", resp.OrderID)
 		})
 	}
-	resp, err := f.Client.Order.LimitCancelOrderBatch(ctx, futures.LimitOrderCancelBatchReq{
+	resp, err := client.Order.LimitCancelOrderBatch(ctx, futures.LimitOrderCancelBatchReq{
 		Market: opts.Symbol, OrderIDs: strings.Join(opts.OrderIDs, ","),
 	})
 	if err != nil {
@@ -153,7 +157,11 @@ func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	if !ok {
 		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
 	}
-	resp, err := f.Client.Order.CancelAllOrder(ctx, futures.LimitOrderCancelAllReq{Market: opts.Symbol})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Order.CancelAllOrder(ctx, futures.LimitOrderCancelAllReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}

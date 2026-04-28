@@ -92,15 +92,19 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
 	}
 	f := opts.Factory
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	currentPrice := opts.CurrentPrice
 	if currentPrice == "" {
-		fetched, err := fetchCurrentPrice(ctx, f.Client, opts.Symbol, priceType)
+		fetched, err := fetchCurrentPrice(ctx, client, opts.Symbol, priceType)
 		if err != nil {
 			return err
 		}
 		currentPrice = fetched
 	}
-	resp, err := f.Client.Order.StopOrder(ctx, futures.StopOrderReq{
+	resp, err := client.Order.StopOrder(ctx, futures.StopOrderReq{
 		Market:        opts.Symbol,
 		Side:          side,
 		OrderPrice:    opts.LimitPrice,

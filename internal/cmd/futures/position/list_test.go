@@ -24,10 +24,10 @@ func TestRunPositionListEmptyHuman(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &ListOptions{Symbol: "BTCUSDT", Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
+	)}
 	if err := runList(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}

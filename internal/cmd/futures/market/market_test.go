@@ -24,10 +24,10 @@ func TestRunKlineEmptyHuman(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &KlineOptions{Symbol: "BTCUSDT", Interval: "1m", Limit: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	}}
+	opts := &KlineOptions{Symbol: "BTCUSDT", Interval: "1m", Limit: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
+	)}
 	if err := runKline(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -38,10 +38,10 @@ func TestRunKlineEmptyHuman(t *testing.T) {
 
 func TestRunKlineRejectsBadLimitBeforeClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	opts := &KlineOptions{Symbol: "BTCUSDT", Interval: "1m", Limit: 0, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
-		IO:     output.New(),
-	}}
+	opts := &KlineOptions{Symbol: "BTCUSDT", Interval: "1m", Limit: 0, Factory: factory.NewForTest(
+		futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
+		nil,
+	)}
 	err := runKline(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "--limit must be greater than 0") {
 		t.Fatalf("err=%v", err)

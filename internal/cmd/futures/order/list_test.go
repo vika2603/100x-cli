@@ -24,10 +24,10 @@ func TestRunListOpenEmptyHuman(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
+	)}
 	if err := runList(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -46,10 +46,10 @@ func TestRunListOpenEmptyJSON(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatJSON},
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Page: 1, PageSize: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatJSON},
+	)}
 	if err := runList(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -71,10 +71,10 @@ func TestRunListFinishedUsesFinishedHeader(t *testing.T) {
 			return nil
 		})
 	stdout := &bytes.Buffer{}
-	opts := &ListOptions{Symbol: "BTCUSDT", Finished: true, Page: 1, PageSize: 20, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
-	}}
+	opts := &ListOptions{Symbol: "BTCUSDT", Finished: true, Page: 1, PageSize: 20, Factory: factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: &bytes.Buffer{}, Format: output.FormatHuman},
+	)}
 	if err := runList(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +92,10 @@ func TestRunListFinishedUsesFinishedHeader(t *testing.T) {
 
 func TestRunListRejectsBadPageSizeBeforeClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	opts := &ListOptions{Page: 1, PageSize: 0, Factory: &factory.Factory{
-		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
-		IO:     output.New(),
-	}}
+	opts := &ListOptions{Page: 1, PageSize: 0, Factory: factory.NewForTest(
+		futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
+		nil,
+	)}
 	err := runList(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "--page-size must be greater than 0") {
 		t.Fatalf("err=%v", err)

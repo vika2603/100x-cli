@@ -67,16 +67,20 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 	if opts.Type == "market" && opts.Price != "" {
 		return clierr.Usagef("--price is not allowed for market position add")
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" {
 			return clierr.Usagef("--price is required for limit position add")
 		}
-		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		positionID, err := resolvePositionID(ctx, client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err
 		}
-		resp, err := f.Client.Position.LimitAddPosition(ctx, futures.LimitAddPositionReq{
+		resp, err := client.Position.LimitAddPosition(ctx, futures.LimitAddPositionReq{
 			Market: opts.Symbol, PositionID: positionID,
 			Price: opts.Price, Quantity: opts.Size,
 		})
@@ -94,11 +98,11 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 			})
 		})
 	case "market":
-		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		positionID, err := resolvePositionID(ctx, client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err
 		}
-		resp, err := f.Client.Position.MarketAddPosition(ctx, futures.MarketAddPositionReq{
+		resp, err := client.Position.MarketAddPosition(ctx, futures.MarketAddPositionReq{
 			Market: opts.Symbol, PositionID: positionID,
 			Quantity: opts.Size,
 		})

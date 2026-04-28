@@ -60,7 +60,11 @@ func runHistory(ctx context.Context, opts *HistoryOptions) error {
 	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
 		return err
 	}
-	resp, err := f.Client.Asset.AssetHistory(ctx, futures.AssetHistoryReq{
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Asset.AssetHistory(ctx, futures.AssetHistoryReq{
 		Asset: strings.ToUpper(opts.Currency), Business: opts.Type, Page: opts.Page, PageSize: opts.PageSize,
 	})
 	if err != nil {

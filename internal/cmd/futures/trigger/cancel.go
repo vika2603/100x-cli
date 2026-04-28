@@ -52,9 +52,13 @@ func runCancel(ctx context.Context, opts *CancelOptions) error {
 	if err := confirmCancelTriggers(f, opts.Symbol, opts.OrderIDs); err != nil {
 		return err
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	ids := make([]int64, 0, len(opts.OrderIDs))
 	for _, id := range opts.OrderIDs {
-		resp, err := f.Client.Order.CancelStopOrder(ctx, futures.StopOrderCancelReq{
+		resp, err := client.Order.CancelStopOrder(ctx, futures.StopOrderCancelReq{
 			Market: opts.Symbol, OrderID: id,
 		})
 		if err != nil {
@@ -119,7 +123,11 @@ func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 	if !ok {
 		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
 	}
-	resp, err := f.Client.Order.CancelAllStopOrder(ctx, futures.StopOrderCancelAllReq{Market: opts.Symbol})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Order.CancelAllStopOrder(ctx, futures.StopOrderCancelAllReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}

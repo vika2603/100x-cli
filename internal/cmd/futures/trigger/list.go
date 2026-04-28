@@ -63,8 +63,12 @@ func runList(ctx context.Context, opts *ListOptions) error {
 	if err := clierr.PositiveInt("--page-size", opts.PageSize); err != nil {
 		return err
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	if !opts.Finished {
-		resp, err := f.Client.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{
+		resp, err := client.Order.PendingStopOrder(ctx, futures.PendingStopOrderReq{
 			Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 		})
 		if err != nil {
@@ -75,7 +79,7 @@ func runList(ctx context.Context, opts *ListOptions) error {
 			return printStops(f.IO, records, "No active triggers found.", opts.Symbol != "")
 		})
 	}
-	resp, err := f.Client.Order.FinishedStopOrder(ctx, futures.FinishedStopOrderReq{
+	resp, err := client.Order.FinishedStopOrder(ctx, futures.FinishedStopOrderReq{
 		Market: opts.Symbol, Page: opts.Page, PageSize: opts.PageSize,
 	})
 	if err != nil {

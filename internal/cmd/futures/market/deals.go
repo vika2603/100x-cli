@@ -37,7 +37,11 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			if err := clierr.PositiveInt("--limit", limit); err != nil {
 				return err
 			}
-			resp, err := f.Client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: symbol})
+			client, err := f.Futures()
+			if err != nil {
+				return err
+			}
+			resp, err := client.Market.MarketDeals(cmd.Context(), futures.MarketDealsReq{Market: symbol})
 			if err != nil {
 				return err
 			}

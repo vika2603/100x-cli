@@ -34,7 +34,11 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 }
 
 func runMarketList(ctx context.Context, f *factory.Factory, includeUnavailable bool) error {
-	resp, err := f.Client.Market.MarketList(ctx, futures.MarketListReq{})
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Market.MarketList(ctx, futures.MarketListReq{})
 	if err != nil {
 		return err
 	}

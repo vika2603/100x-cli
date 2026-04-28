@@ -75,14 +75,18 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
 	}
 	f := opts.Factory
-	attached, err := protection.IsAttached(ctx, f.Client, opts.Symbol, opts.OrderID)
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	attached, err := protection.IsAttached(ctx, client, opts.Symbol, opts.OrderID)
 	if err != nil {
 		return err
 	}
 	if !attached {
 		return fmt.Errorf("trigger %s cannot be edited: it is either a standalone trigger or no longer pending. Standalone triggers must be cancelled and re-placed; run `100x futures trigger list` to see editable triggers", opts.OrderID)
 	}
-	resp, err := f.Client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
+	resp, err := client.Order.EditStopOrder(ctx, futures.StopOrderEditReq{
 		Market:        opts.Symbol,
 		StopOrderID:   opts.OrderID,
 		StopPrice:     opts.TriggerPrice,

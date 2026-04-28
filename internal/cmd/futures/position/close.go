@@ -72,16 +72,20 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 	if opts.Type == "market" && opts.Price != "" {
 		return clierr.Usagef("--price is not allowed for market position close")
 	}
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	switch opts.Type {
 	case "limit":
 		if opts.Price == "" || opts.Size == "" {
 			return clierr.Usagef("--price and --size are required for limit position close")
 		}
-		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		positionID, err := resolvePositionID(ctx, client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err
 		}
-		resp, err := f.Client.Position.LimitClosePosition(ctx, futures.LimitClosePositionReq{
+		resp, err := client.Position.LimitClosePosition(ctx, futures.LimitClosePositionReq{
 			Market: opts.Symbol, PositionID: positionID,
 			Price: opts.Price, Quantity: opts.Size, ClientOID: opts.ClientOrderID,
 		})
@@ -99,7 +103,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 			})
 		})
 	case "market":
-		positionID, err := resolvePositionID(ctx, f.Client, opts.Symbol, opts.PositionID)
+		positionID, err := resolvePositionID(ctx, client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err
 		}
@@ -114,7 +118,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 		if opts.Size != "" {
 			f.IO.Println("warning: --size is ignored for market position close; server closes the full position")
 		}
-		resp, err := f.Client.Position.MarketClosePosition(ctx, futures.MarketClosePositionReq{
+		resp, err := client.Position.MarketClosePosition(ctx, futures.MarketClosePositionReq{
 			Market: opts.Symbol, PositionID: positionID,
 			ClientOID: opts.ClientOrderID,
 		})

@@ -68,7 +68,11 @@ func runDeals(ctx context.Context, opts *DealsOptions) error {
 	if err != nil {
 		return err
 	}
-	resp, err := f.Client.Order.OrderDeals(ctx, futures.OrderDealsReq{
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Order.OrderDeals(ctx, futures.OrderDealsReq{
 		Market: opts.Symbol, StartTime: startTime, EndTime: endTime,
 		Page: opts.Page, PageSize: opts.PageSize,
 	})

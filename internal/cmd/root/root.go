@@ -21,9 +21,7 @@ import (
 	futuresGroup "github.com/vika2603/100x-cli/internal/cmd/futures"
 	"github.com/vika2603/100x-cli/internal/cmd/profile"
 	"github.com/vika2603/100x-cli/internal/cmd/upgrade"
-	"github.com/vika2603/100x-cli/internal/config"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/session"
 	"github.com/vika2603/100x-cli/internal/version"
 )
 
@@ -101,6 +99,8 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		f.IO = r
 		f.Yes = gf.yes
 		f.Timeout = gf.timeout
+		f.ProfileFlag = gf.profile
+		f.Auth = factory.LookupAuth(c)
 
 		// --timeout bounds the whole command, including retries.
 		if gf.timeout > 0 {
@@ -109,38 +109,6 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			cobra.OnFinalize(cancel)
 		}
 
-		// Group commands display help; their RunE only calls c.Help(), which
-		// never touches the API. Skip client load structurally rather than
-		// asking each group to declare AuthNone.
-		if c.HasSubCommands() {
-			return nil
-		}
-
-		// Each verb (or its nearest ancestor) declares its own client need via
-		// factory.RequirePublic / RequirePrivate. Unmarked verbs (version,
-		// completion, profile management) load nothing.
-		mode := factory.LookupAuth(c)
-		if mode == factory.AuthNone {
-			return nil
-		}
-
-		sess, err := session.Load(session.LoadOptions{
-			RequestedProfile: gf.profile,
-			Timeout:          gf.timeout,
-			Public:           mode == factory.AuthPublic,
-		})
-		if err != nil {
-			if errors.Is(err, config.ErrNoProfile) {
-				return fmt.Errorf("no profile configured: run `100x profile add`")
-			}
-			if errors.Is(err, config.ErrNoEndpoint) {
-				return fmt.Errorf("no API endpoint configured: set $E100X_ENDPOINT")
-			}
-			return err
-		}
-		f.Client = sess.Client
-		f.Profile = sess.Profile
-		f.ProfileName = sess.ProfileName
 		return nil
 	}
 
@@ -175,7 +143,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 			_ = enc.Encode(payload)
 			return
 		}
-		fmt.Fprintln(os.Stderr, "error:", addGenericUsageHint(humanErrorMessage(err, codeString), codeString))
+		fmt.Fprintln(os.Stderr, "Error:", addGenericUsageHint(humanErrorMessage(err, codeString), codeString))
 	}
 	return cmd, emit
 }

@@ -49,8 +49,12 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 
 func runState(ctx context.Context, opts *StateOptions) error {
 	f := opts.Factory
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	if opts.Symbol == "" {
-		resp, err := f.Client.Market.MarketStateAll(ctx, futures.MarketStateAllReq{})
+		resp, err := client.Market.MarketStateAll(ctx, futures.MarketStateAllReq{})
 		if err != nil {
 			return err
 		}
@@ -59,7 +63,7 @@ func runState(ctx context.Context, opts *StateOptions) error {
 		}
 		return f.IO.Render(resp, func() error { return printMarketStates(f.IO, resp) })
 	}
-	resp, err := f.Client.Market.MarketState(ctx, futures.MarketStateReq{Market: opts.Symbol})
+	resp, err := client.Market.MarketState(ctx, futures.MarketStateReq{Market: opts.Symbol})
 	if err != nil {
 		return err
 	}

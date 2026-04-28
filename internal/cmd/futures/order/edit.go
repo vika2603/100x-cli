@@ -67,15 +67,19 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		return err
 	}
 	f := opts.Factory
+	client, err := f.Futures()
+	if err != nil {
+		return err
+	}
 	old := protection.Order{Symbol: opts.Symbol, OrderID: opts.OrderID}
-	oldState, err := old.Inspect(ctx, f.Client)
+	oldState, err := old.Inspect(ctx, client)
 	if err != nil {
 		return err
 	}
 	if oldState.HasAny() && oldState.CrossOrderConflict {
 		return fmt.Errorf("order edit would need to reattach SL/TP for %s, but another order on the same position has active triggers; edit/cancel those triggers first", opts.OrderID)
 	}
-	resp, err := f.Client.Order.EditLimitOrder(ctx, futures.LimitOrderEditReq{
+	resp, err := client.Order.EditLimitOrder(ctx, futures.LimitOrderEditReq{
 		Market:   opts.Symbol,
 		OrderID:  opts.OrderID,
 		Price:    opts.Price,
@@ -88,13 +92,13 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		newOrderID := strconv.FormatInt(resp.OrderID, 10)
 		fresh := protection.Order{Symbol: opts.Symbol, OrderID: newOrderID}
 		want := dropTriggerIDs(oldState)
-		if err := fresh.Apply(ctx, f.Client, protection.State{}, want); err != nil {
+		if err := fresh.Apply(ctx, client, protection.State{}, want); err != nil {
 			return fmt.Errorf("order edited to %d but failed to reattach SL/TP: %w", resp.OrderID, err)
 		}
-		if err := fresh.Verify(ctx, f.Client, want); err != nil {
+		if err := fresh.Verify(ctx, client, want); err != nil {
 			return fmt.Errorf("order edited to %d but failed to verify reattached SL/TP: %w", resp.OrderID, err)
 		}
-		if refreshed, err := f.Client.Order.OrderDetail(ctx, futures.OrderDetailReq{
+		if refreshed, err := client.Order.OrderDetail(ctx, futures.OrderDetailReq{
 			Market: opts.Symbol, OrderID: newOrderID,
 		}); err == nil {
 			resp.OrderItem = *refreshed

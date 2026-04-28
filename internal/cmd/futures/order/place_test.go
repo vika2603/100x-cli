@@ -29,11 +29,11 @@ func TestRunPlaceLimit(t *testing.T) {
 			return nil
 		})
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	f := &factory.Factory{
-		Client: futures.NewWithDoer(doer),
-		IO:     &output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
-		Yes:    true,
-	}
+	f := factory.NewForTest(
+		futures.NewWithDoer(doer),
+		&output.Renderer{Out: stdout, Err: stderr, Format: output.FormatHuman},
+	)
+	f.Yes = true
 	opts := &PlaceOptions{
 		Limit: true, Symbol: "BTCUSDT", Side: "buy",
 		Price: "70000", Size: "0.1",
@@ -53,10 +53,7 @@ func TestRunPlaceLimit(t *testing.T) {
 // parse time too; this guards the runPlace direct-call path.)
 func TestRunPlaceMissingType(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	f := &factory.Factory{
-		Client: futures.NewWithDoer(mocks.NewMockDoer(ctrl)),
-		IO:     output.New(),
-	}
+	f := factory.NewForTest(futures.NewWithDoer(mocks.NewMockDoer(ctrl)), nil)
 	opts := &PlaceOptions{Symbol: "BTC", Side: "buy", Size: "1", Factory: f}
 	err := runPlace(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "must set --limit or --market") {
