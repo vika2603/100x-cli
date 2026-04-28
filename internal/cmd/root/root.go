@@ -77,6 +77,11 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		&cobra.Group{ID: "tools", Title: "Tooling Commands"},
 	)
 
+	// CLI takes no filesystem paths anywhere, so flags without an explicit
+	// completion function should not fall back to file completion. The
+	// directive is inherited by every descendant.
+	cmd.CompletionOptions.SetDefaultShellCompDirective(cobra.ShellCompDirectiveNoFileComp)
+
 	cmd.PersistentFlags().StringVar(&gf.profile, "profile", "", "Use credentials from profile <name>")
 	cmd.PersistentFlags().BoolVar(&gf.jsonOut, "json", false, "Write JSON to stdout")
 	cmd.PersistentFlags().StringVar(&gf.jq, "jq", "", "Run a gojq expression against JSON output")

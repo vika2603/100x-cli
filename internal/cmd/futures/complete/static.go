@@ -45,12 +45,12 @@ func MarginModes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDir
 
 // OrderSides completes order side values.
 func OrderSides(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return values("buy", "sell")
+	return values("BUY", "SELL")
 }
 
 // OrderTypes completes order type values.
 func OrderTypes(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return values("limit", "market")
+	return values("LIMIT", "MARKET")
 }
 
 // OrderSizes completes common order size examples.
@@ -71,11 +71,6 @@ func TimeInForce(*cobra.Command, []string, string) ([]string, cobra.ShellCompDir
 // TriggerFeeds completes supported trigger price feeds.
 func TriggerFeeds(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	return values("LAST", "INDEX", "MARK")
-}
-
-// TriggerLegs completes stop-loss and take-profit labels.
-func TriggerLegs(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-	return values("SL", "TP")
 }
 
 func values(items ...string) ([]string, cobra.ShellCompDirective) {
