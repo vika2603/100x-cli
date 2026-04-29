@@ -30,11 +30,11 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 			"one detailed record including last price, index price, mark price, funding fields, and\n" +
 			"24h change data for that market.",
 		Example: "# Show one state row for every market\n" +
-			"  100x futures market state\n\n" +
+			"  100x market state\n\n" +
 			"# Show the detailed state record for BTCUSDT only\n" +
-			"  100x futures market state BTCUSDT\n\n" +
+			"  100x market state BTCUSDT\n\n" +
 			"# Extract symbol, last price, and next funding rate from all markets\n" +
-			"  100x --json futures market state --jq 'map({symbol: .market, last, funding_rate_next})'",
+			"  100x --json market state --jq 'map({symbol: .market, last, funding_rate_next})'",
 		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {

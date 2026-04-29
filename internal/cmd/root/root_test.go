@@ -124,11 +124,11 @@ func TestPluralVerbsAreNotAccepted(t *testing.T) {
 	for _, args := range [][]string{
 		{"orders"},
 		{"profiles"},
+		{"markets"},
 		{"f", "orders"},
 		{"f", "positions"},
 		{"f", "triggers"},
 		{"f", "balances"},
-		{"f", "markets"},
 	} {
 		_, _, err := executeRoot(t, args...)
 		if err == nil {
@@ -142,8 +142,8 @@ func TestVerboseSynonymAliasesAreNotAccepted(t *testing.T) {
 		{"profile", "create"},
 		{"profile", "default"},
 		{"profile", "switch"},
-		{"f", "market", "ticker"},
-		{"f", "market", "candles"},
+		{"market", "ticker"},
+		{"market", "candles"},
 		{"f", "order", "trades"},
 	}
 	for _, args := range cases {
@@ -157,9 +157,9 @@ func TestVerboseSynonymAliasesAreNotAccepted(t *testing.T) {
 // TestAuthAnnotationsLockBoundary asserts the per-command auth declarations
 // the rest of the codebase depends on. It walks the command tree and checks
 // that each verb resolves to the AuthMode required by its semantics: market
-// children → public, other futures verbs → private, profile/version/
-// completion → none. Adding a new public verb that forgets to override the
-// default, or accidentally promoting a market verb to private, fails here.
+// children → public, futures verbs → private, profile/version/completion
+// → none. Accidentally promoting a market verb to private, or demoting a
+// futures verb to public, fails here.
 func TestAuthAnnotationsLockBoundary(t *testing.T) {
 	cmd, _ := NewCmdRoot()
 
@@ -172,11 +172,11 @@ func TestAuthAnnotationsLockBoundary(t *testing.T) {
 		{[]string{"profile", "list"}, factory.AuthNone},
 		{[]string{"profile", "add"}, factory.AuthNone},
 
-		{[]string{"futures", "market", "list"}, factory.AuthPublic},
-		{[]string{"futures", "market", "state"}, factory.AuthPublic},
-		{[]string{"futures", "market", "depth"}, factory.AuthPublic},
-		{[]string{"futures", "market", "kline"}, factory.AuthPublic},
-		{[]string{"futures", "market", "deals"}, factory.AuthPublic},
+		{[]string{"market", "list"}, factory.AuthPublic},
+		{[]string{"market", "state"}, factory.AuthPublic},
+		{[]string{"market", "depth"}, factory.AuthPublic},
+		{[]string{"market", "kline"}, factory.AuthPublic},
+		{[]string{"market", "deals"}, factory.AuthPublic},
 
 		{[]string{"futures", "balance", "list"}, factory.AuthPrivate},
 		{[]string{"futures", "balance", "history"}, factory.AuthPrivate},
@@ -211,7 +211,7 @@ func TestGroupCommandsAreSkippedStructurally(t *testing.T) {
 	groups := [][]string{
 		{},                      // root
 		{"futures"},             // futures group
-		{"futures", "market"},   // public group
+		{"market"},              // public group
 		{"futures", "order"},    // private group
 		{"futures", "trigger"},  // private group
 		{"futures", "position"}, // private group
@@ -239,20 +239,19 @@ func TestGroupCommandsAreSkippedStructurally(t *testing.T) {
 	}
 }
 
-// TestRequireAnnotationOverridesParent verifies the inheritance rule: a
-// child's explicit declaration takes precedence over the parent's. The
-// market group sits under futures (RequirePrivate) and overrides with
-// RequirePublic; every market descendant must resolve to AuthPublic.
-func TestRequireAnnotationOverridesParent(t *testing.T) {
+// TestMarketGroupInheritsPublic verifies the inheritance rule: a child's
+// declaration propagates down its subtree. The top-level market group
+// declares RequirePublic, and every market descendant must resolve to
+// AuthPublic.
+func TestMarketGroupInheritsPublic(t *testing.T) {
 	cmd, _ := NewCmdRoot()
-	market, _, err := cmd.Find([]string{"futures", "market"})
+	market, _, err := cmd.Find([]string{"market"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := factory.LookupAuth(market); got != factory.AuthPublic {
-		t.Fatalf("market group LookupAuth=%q want AuthPublic (must override the futures default)", got)
+		t.Fatalf("market group LookupAuth=%q want AuthPublic", got)
 	}
-	// Walk every market child and confirm they all inherit AuthPublic.
 	for _, child := range market.Commands() {
 		if got := factory.LookupAuth(child); got != factory.AuthPublic {
 			t.Errorf("market child %q inherits %q want AuthPublic", child.Name(), got)
@@ -292,7 +291,7 @@ func TestTimeoutFlagFiresOnHangingServer(t *testing.T) {
 	keyring.MockInit()
 
 	start := time.Now()
-	_, stderr, err := executeRoot(t, "--timeout", "150ms", "futures", "market", "list")
+	_, stderr, err := executeRoot(t, "--timeout", "150ms", "market", "list")
 	elapsed := time.Since(start)
 	if err == nil {
 		t.Fatal("expected timeout error")

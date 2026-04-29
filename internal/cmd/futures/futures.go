@@ -6,7 +6,6 @@ import (
 
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/balance"
-	"github.com/vika2603/100x-cli/internal/cmd/futures/market"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/order"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/position"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/trigger"
@@ -17,24 +16,23 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:     "futures",
 		Aliases: []string{"f"},
-		Short:   "Trade futures, manage positions, and read market data",
-		Long: "Trade futures, manage positions, and read market data.\n\n" +
+		Short:   "Trade futures, manage positions, and read account state",
+		Long: "Trade futures, manage positions, and read account state.\n\n" +
 			"This group contains trading commands for orders, triggers, and positions, plus account\n" +
-			"and market-data commands. Most write operations require a profile with private credentials;\n" +
-			"the `market` subtree is public and can be used without a secret.\n\n" +
+			"commands. Most write operations require a profile with private credentials. Public\n" +
+			"market data lives under the top-level `market` command.\n\n" +
 			"Symbols are usually positional arguments rather than flags. Start at the noun you care\n" +
 			"about, then inspect the subcommands for read and write flows on that resource.",
-		Example: "# Show the latest market state for BTCUSDT\n" +
-			"  100x futures market state BTCUSDT\n\n" +
-			"# List current account balances\n" +
+		Example: "# List current account balances\n" +
 			"  100x futures balance list\n\n" +
 			"# List open BTCUSDT orders\n" +
-			"  100x futures order list --symbol BTCUSDT",
+			"  100x futures order list --symbol BTCUSDT\n\n" +
+			"# Show the latest market state for BTCUSDT (lives under the top-level market command)\n" +
+			"  100x market state BTCUSDT",
 	}
 	c.AddGroup(
 		&cobra.Group{ID: "trade", Title: "Trading Commands"},
 		&cobra.Group{ID: "account", Title: "Account Commands"},
-		&cobra.Group{ID: "market", Title: "Market Data Commands"},
 	)
 	orderCmd := order.NewCmdOrder(f)
 	orderCmd.GroupID = "trade"
@@ -46,18 +44,13 @@ func NewCmdFutures(f *factory.Factory) *cobra.Command {
 	preferenceCmd.GroupID = "trade"
 	balanceCmd := balance.NewCmdBalance(f)
 	balanceCmd.GroupID = "account"
-	marketCmd := market.NewCmdMarket(f)
-	marketCmd.GroupID = "market"
 	c.AddCommand(
 		orderCmd,
 		triggerCmd,
 		positionCmd,
 		preferenceCmd,
 		balanceCmd,
-		marketCmd,
 	)
-	// Default for the futures subtree: signed private client. The market
-	// child group overrides this with RequirePublic for its own descendants.
 	factory.RequirePrivate(c)
 	return c
 }

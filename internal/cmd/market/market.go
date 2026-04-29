@@ -1,4 +1,4 @@
-// Package market wires the `100x futures market` verbs.
+// Package market wires the `100x market` verbs.
 package market
 
 import (
@@ -13,18 +13,17 @@ func NewCmdMarket(f *factory.Factory) *cobra.Command {
 		Use:     "market",
 		Aliases: []string{"m"},
 		Short:   "Public market data",
-		Long: "Read public futures market data.\n\n" +
+		Long: "Read public market data.\n\n" +
 			"These commands do not place trades or require private credentials. Use them to discover\n" +
 			"symbols, inspect ticker state, read the current order book, list recent public trades,\n" +
 			"or query candle history for charting and diagnostics.",
 		Example: "# Show the latest ticker snapshot for BTCUSDT\n" +
-			"  100x futures market state BTCUSDT\n\n" +
+			"  100x market state BTCUSDT\n\n" +
 			"# Show the top 5 bid and ask levels for BTCUSDT\n" +
-			"  100x futures market depth BTCUSDT --limit 5",
+			"  100x market depth BTCUSDT --limit 5",
 	}
 	c.AddCommand(newCmdList(f), newCmdState(f), newCmdDepth(f), newCmdDeals(f), newCmdKline(f))
-	// Override the futures parent's default: market endpoints are public and
-	// do not need a signed client.
+	// Market endpoints are public and do not need a signed client.
 	factory.RequirePublic(c)
 	return c
 }

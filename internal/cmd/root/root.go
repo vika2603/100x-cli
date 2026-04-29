@@ -18,6 +18,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/completion"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	futuresGroup "github.com/vika2603/100x-cli/internal/cmd/futures"
+	"github.com/vika2603/100x-cli/internal/cmd/market"
 	"github.com/vika2603/100x-cli/internal/cmd/profile"
 	"github.com/vika2603/100x-cli/internal/cmd/upgrade"
 	"github.com/vika2603/100x-cli/internal/output"
@@ -56,7 +57,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 		Example: "# Add a profile named test (you will be prompted for the secret)\n" +
 			"  100x profile add test --client-id <CID>\n\n" +
 			"# Show the latest ticker-style state for BTCUSDT\n" +
-			"  100x futures market state BTCUSDT\n\n" +
+			"  100x market state BTCUSDT\n\n" +
 			"# List your open positions across every market\n" +
 			"  100x futures position list",
 		SilenceUsage:               true,
@@ -106,6 +107,8 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 
 	futuresCmd := futuresGroup.NewCmdFutures(f)
 	futuresCmd.GroupID = "core"
+	marketCmd := market.NewCmdMarket(f)
+	marketCmd.GroupID = "core"
 	profileCmd := profile.NewCmdProfile(f)
 	profileCmd.GroupID = "auth"
 	completionCmd := completion.NewCmdCompletion()
@@ -114,7 +117,7 @@ func NewCmdRoot() (*cobra.Command, ErrorEmitter) {
 	versionCmd.GroupID = "tools"
 	upgradeCmd := upgrade.NewCmdUpgrade(f)
 	upgradeCmd.GroupID = "tools"
-	cmd.AddCommand(futuresCmd, profileCmd, completionCmd, versionCmd, upgradeCmd)
+	cmd.AddCommand(futuresCmd, marketCmd, profileCmd, completionCmd, versionCmd, upgradeCmd)
 	configureHelp(cmd)
 	configureUsageErrors(cmd)
 

@@ -20,11 +20,11 @@ func newCmdList(f *factory.Factory) *cobra.Command {
 			"By default the command shows only currently tradable markets. Use\n" +
 			"--include-unavailable to include markets that exist but are not currently available.",
 		Example: "# List only markets that are currently tradable\n" +
-			"  100x futures market list\n\n" +
+			"  100x market list\n\n" +
 			"# Include paused or unavailable markets in the result\n" +
-			"  100x futures market list --include-unavailable\n\n" +
+			"  100x market list --include-unavailable\n\n" +
 			"# Extract symbol, tick size, and availability as JSON\n" +
-			"  100x --json futures market list --include-unavailable --jq 'map({symbol: .name, tick_size: .tick_size, available})'",
+			"  100x --json market list --include-unavailable --jq 'map({symbol: .name, tick_size: .tick_size, available})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runMarketList(cmd.Context(), f, includeUnavailable)
 		},

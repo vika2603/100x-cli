@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // helpTemplate renders root and subcommand --help. Sections are emitted
@@ -70,10 +71,16 @@ const helpTemplate = `
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}
 {{- end}}
 
-{{- if .HasAvailableInheritedFlags}}
+{{- if hasInheritedFromAncestor .}}
+
+{{section "Inherited Flags"}}
+{{inheritedFromAncestorUsages . | trimTrailingWhitespaces}}
+{{- end}}
+
+{{- if hasInheritedFromRoot .}}
 
 {{section "Global Flags"}}
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}
+{{inheritedFromRootUsages . | trimTrailingWhitespaces}}
 {{- end}}
 `
 
@@ -124,11 +131,15 @@ func renderHelp(w io.Writer, cmd *cobra.Command) error {
 		"commandLabel":            commandLabel,
 		"commandNamePadding":      commandNamePadding,
 		"rpad":                    rpad,
-		"section":                 styler.section,
-		"commandName":             styler.commandName,
-		"commandSuffix":           commandSuffix,
-		"formatExamples":          styler.formatExamples,
-		"trimTrailingWhitespaces": trimTrailingWhitespaces,
+		"section":                      styler.section,
+		"commandName":                  styler.commandName,
+		"commandSuffix":                commandSuffix,
+		"formatExamples":               styler.formatExamples,
+		"trimTrailingWhitespaces":      trimTrailingWhitespaces,
+		"hasInheritedFromRoot":         hasInheritedFromRoot,
+		"inheritedFromRootUsages":      inheritedFromRootUsages,
+		"hasInheritedFromAncestor":     hasInheritedFromAncestor,
+		"inheritedFromAncestorUsages":  inheritedFromAncestorUsages,
 	}).Parse(helpTemplate)
 	if err != nil {
 		return err
@@ -280,6 +291,44 @@ func groupedCommands(cmd *cobra.Command) []commandGroupView {
 		}
 	}
 	return out
+}
+
+// partitionInheritedFlags splits cmd's inherited persistent flags into the
+// ones defined on the root command (true globals: --json, --color, --profile,
+// ...) and the ones defined on an intermediate ancestor — i.e. a persistent
+// flag declared on a non-root parent and inherited by its descendants.
+func partitionInheritedFlags(cmd *cobra.Command) (root, ancestor *pflag.FlagSet) {
+	root = pflag.NewFlagSet("root-globals", pflag.ContinueOnError)
+	ancestor = pflag.NewFlagSet("ancestor-inherited", pflag.ContinueOnError)
+	rootPersistent := cmd.Root().PersistentFlags()
+	cmd.InheritedFlags().VisitAll(func(f *pflag.Flag) {
+		if rootPersistent.Lookup(f.Name) != nil {
+			root.AddFlag(f)
+		} else {
+			ancestor.AddFlag(f)
+		}
+	})
+	return root, ancestor
+}
+
+func hasInheritedFromRoot(cmd *cobra.Command) bool {
+	root, _ := partitionInheritedFlags(cmd)
+	return root.HasAvailableFlags()
+}
+
+func inheritedFromRootUsages(cmd *cobra.Command) string {
+	root, _ := partitionInheritedFlags(cmd)
+	return root.FlagUsages()
+}
+
+func hasInheritedFromAncestor(cmd *cobra.Command) bool {
+	_, ancestor := partitionInheritedFlags(cmd)
+	return ancestor.HasAvailableFlags()
+}
+
+func inheritedFromAncestorUsages(cmd *cobra.Command) string {
+	_, ancestor := partitionInheritedFlags(cmd)
+	return ancestor.FlagUsages()
 }
 
 func ungroupedCommands(cmd *cobra.Command) []*cobra.Command {

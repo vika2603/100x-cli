@@ -25,11 +25,11 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 			"Responses contain at most 50 trades; --limit values higher than that have no\n" +
 			"additional effect.",
 		Example: "# Show the latest public trades for BTCUSDT\n" +
-			"  100x futures market deals BTCUSDT\n\n" +
+			"  100x market deals BTCUSDT\n\n" +
 			"# Show the latest 50 public trades for BTCUSDT\n" +
-			"  100x futures market deals BTCUSDT --limit 50\n\n" +
+			"  100x market deals BTCUSDT --limit 50\n\n" +
 			"# Extract trade id, side, price, and size as JSON\n" +
-			"  100x --json futures market deals BTCUSDT --limit 20 --jq 'map({id, type, price, volume})'",
+			"  100x --json market deals BTCUSDT --limit 20 --jq 'map({id, type, price, volume})'",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {

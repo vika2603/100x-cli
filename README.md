@@ -30,7 +30,7 @@ Or build from source: `make build`.
 ```sh
 100x profile add test --client-id <CID>      # interactive secret prompt
 100x futures balance list
-100x futures market state BTCUSDT
+100x market state BTCUSDT
 100x futures order place BTCUSDT --side buy --price 70000 --size 0.1
 ```
 

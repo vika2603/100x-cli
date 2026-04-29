@@ -30,11 +30,11 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 			"Responses contain at most 50 levels per side; --limit values higher than that have no\n" +
 			"additional effect, and a less liquid market may return fewer levels regardless of --limit.",
 		Example: "# Show the current order book for BTCUSDT\n" +
-			"  100x futures market depth BTCUSDT\n\n" +
+			"  100x market depth BTCUSDT\n\n" +
 			"# Merge levels by tick size 0.1 and show 20 bids and 20 asks\n" +
-			"  100x futures market depth BTCUSDT --tick-size 0.1 --limit 20\n\n" +
+			"  100x market depth BTCUSDT --tick-size 0.1 --limit 20\n\n" +
 			"# Extract the best bid and ask price as JSON\n" +
-			"  100x --json futures market depth BTCUSDT --limit 1 --jq '{best_bid: .bids[0].price, best_ask: .asks[0].price}'",
+			"  100x --json market depth BTCUSDT --limit 1 --jq '{best_bid: .bids[0].price, best_ask: .asks[0].price}'",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {

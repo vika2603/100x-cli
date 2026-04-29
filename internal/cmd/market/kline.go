@@ -34,11 +34,11 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 		Long: "Get candlestick history.\n\n" +
 			"When --since is set and --until is omitted, the CLI uses the current time as the end of the window.",
 		Example: "# Show the latest 20 one-minute candles for BTCUSDT\n" +
-			"  100x futures market kline BTCUSDT --interval 1m --limit 20\n\n" +
+			"  100x market kline BTCUSDT --interval 1m --limit 20\n\n" +
 			"# Query five-minute candles for the last hour using relative time expressions\n" +
-			"  100x futures market kline BTCUSDT --since now-1h --until now --interval 5m\n\n" +
+			"  100x market kline BTCUSDT --since now-1h --until now --interval 5m\n\n" +
 			"# Extract time, open, high, low, and close as JSON\n" +
-			"  100x --json futures market kline BTCUSDT --interval 5m --limit 12 --jq 'map({time, open, high, low, close})'",
+			"  100x --json market kline BTCUSDT --interval 5m --limit 12 --jq 'map({time, open, high, low, close})'",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
