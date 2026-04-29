@@ -14,6 +14,38 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/protection"
 )
 
+// attachStop is the per-side projection of protection.Stop in the attach
+// command's JSON payload.
+type attachStop struct {
+	Price     string `json:"price"`
+	TriggerBy string `json:"trigger_by"`
+}
+
+// attachOrderResult is the JSON payload of `trigger attach order`.
+type attachOrderResult struct {
+	Symbol  string      `json:"symbol"`
+	OrderID string      `json:"order_id"`
+	SL      *attachStop `json:"sl,omitempty"`
+	TP      *attachStop `json:"tp,omitempty"`
+}
+
+// attachPositionResult is the JSON payload of `trigger attach position`.
+type attachPositionResult struct {
+	Symbol     string      `json:"symbol"`
+	PositionID string      `json:"position_id"`
+	SL         *attachStop `json:"sl,omitempty"`
+	TP         *attachStop `json:"tp,omitempty"`
+}
+
+// stopOut projects a protection.Stop into the JSON shape, returning nil
+// when the side carries no real price.
+func stopOut(s protection.Stop) *attachStop {
+	if !s.Set() {
+		return nil
+	}
+	return &attachStop{Price: s.Price, TriggerBy: s.PriceType.String()}
+}
+
 // NewCmdAttach is the `attach` group: `attach order` and `attach position`.
 func NewCmdAttach(f *factory.Factory) *cobra.Command {
 	c := &cobra.Command{
@@ -122,7 +154,15 @@ func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
 	if err := target.Verify(ctx, client, want); err != nil {
 		return err
 	}
-	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to order", opts.OrderID)
+	payload := attachOrderResult{
+		Symbol:  opts.Symbol,
+		OrderID: opts.OrderID,
+		SL:      stopOut(want.SL),
+		TP:      stopOut(want.TP),
+	}
+	return f.IO.Render(payload, func() error {
+		return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to order", opts.OrderID)
+	})
 }
 
 // AttachPositionOptions captures the flag-bound state of `trigger attach position`.
@@ -205,7 +245,15 @@ func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
 	if err := target.Apply(ctx, client, current, want); err != nil {
 		return err
 	}
-	return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to position on", opts.Symbol)
+	payload := attachPositionResult{
+		Symbol:     opts.Symbol,
+		PositionID: opts.PositionID,
+		SL:         stopOut(want.SL),
+		TP:         stopOut(want.TP),
+	}
+	return f.IO.Render(payload, func() error {
+		return f.IO.Resultln("Attached", changedSideLabel(opts.SLPrice, opts.TPPrice), "to position on", opts.Symbol)
+	})
 }
 
 // validateSidePrices enforces the attach flag invariants:
