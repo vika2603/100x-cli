@@ -125,21 +125,21 @@ func applyHelp(cmd *cobra.Command) {
 func renderHelp(w io.Writer, cmd *cobra.Command) error {
 	styler := newHelpStyler(cmd, w)
 	tmpl, err := template.New("help").Funcs(template.FuncMap{
-		"join":                    strings.Join,
-		"groupedCommands":         groupedCommands,
-		"ungroupedCommands":       ungroupedCommands,
-		"commandLabel":            commandLabel,
-		"commandNamePadding":      commandNamePadding,
-		"rpad":                    rpad,
-		"section":                      styler.section,
-		"commandName":                  styler.commandName,
-		"commandSuffix":                commandSuffix,
-		"formatExamples":               styler.formatExamples,
-		"trimTrailingWhitespaces":      trimTrailingWhitespaces,
-		"hasInheritedFromRoot":         hasInheritedFromRoot,
-		"inheritedFromRootUsages":      inheritedFromRootUsages,
-		"hasInheritedFromAncestor":     hasInheritedFromAncestor,
-		"inheritedFromAncestorUsages":  inheritedFromAncestorUsages,
+		"join":                        strings.Join,
+		"groupedCommands":             groupedCommands,
+		"ungroupedCommands":           ungroupedCommands,
+		"commandLabel":                commandLabel,
+		"commandNamePadding":          commandNamePadding,
+		"rpad":                        rpad,
+		"section":                     styler.section,
+		"commandName":                 styler.commandName,
+		"commandSuffix":               commandSuffix,
+		"formatExamples":              styler.formatExamples,
+		"trimTrailingWhitespaces":     trimTrailingWhitespaces,
+		"hasInheritedFromRoot":        hasInheritedFromRoot,
+		"inheritedFromRootUsages":     inheritedFromRootUsages,
+		"hasInheritedFromAncestor":    hasInheritedFromAncestor,
+		"inheritedFromAncestorUsages": inheritedFromAncestorUsages,
 	}).Parse(helpTemplate)
 	if err != nil {
 		return err
