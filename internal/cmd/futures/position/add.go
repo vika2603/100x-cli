@@ -2,7 +2,9 @@ package position
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 )
@@ -64,8 +67,21 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 	if err := clierr.PositiveNumber("--price", opts.Price); err != nil {
 		return err
 	}
+	if opts.Type != "limit" && opts.Type != "market" {
+		return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
+	}
 	if opts.Type == "market" && opts.Price != "" {
 		return clierr.Usagef("--price is not allowed for market position add")
+	}
+	if opts.Type == "limit" && opts.Price == "" {
+		return clierr.Usagef("--price is required for limit position add")
+	}
+	ok, err := f.ConfirmDestructive(addConfirmTitle(opts))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
 	}
 	client, err := f.Futures()
 	if err != nil {
@@ -73,9 +89,6 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 	}
 	switch opts.Type {
 	case "limit":
-		if opts.Price == "" {
-			return clierr.Usagef("--price is required for limit position add")
-		}
 		positionID, err := resolvePositionID(ctx, client, opts.Symbol, opts.PositionID)
 		if err != nil {
 			return err
@@ -120,5 +133,16 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 			})
 		})
 	}
-	return clierr.Usagef("unknown --type %q (want limit|market)", opts.Type)
+	return nil
+}
+
+// addConfirmTitle renders a one-line summary of the add operation for the
+// destructive-op prompt: size, symbol, type, and optional limit price.
+func addConfirmTitle(opts *AddOptions) string {
+	typeLabel := strings.ToUpper(opts.Type)
+	priceClause := ""
+	if opts.Type == "limit" {
+		priceClause = fmt.Sprintf(" at %s", opts.Price)
+	}
+	return fmt.Sprintf("Add %s to %s position (%s%s)?", opts.Size, opts.Symbol, typeLabel, priceClause)
 }
