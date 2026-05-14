@@ -13,7 +13,7 @@ type AssetQueryReq struct{}
 // AssetQuery returns the user's current wallet across assets.
 func (c *AssetClient) AssetQuery(ctx context.Context, req AssetQueryReq) ([]AssetDetailItem, error) {
 	var resp []AssetDetailItem
-	if err := c.doer.Get(ctx, "/open/api/v2/asset/query", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/asset/query", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -39,7 +39,7 @@ type AssetHistoryResp struct {
 // AssetHistory lists asset changes within a time window.
 func (c *AssetClient) AssetHistory(ctx context.Context, req AssetHistoryReq) (*AssetHistoryResp, error) {
 	var resp AssetHistoryResp
-	if err := c.doer.Get(ctx, "/open/api/v2/asset/history", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/asset/history", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

@@ -15,7 +15,7 @@ type PendingPositionReq struct {
 // PendingPosition lists currently open positions.
 func (c *PositionClient) PendingPosition(ctx context.Context, req PendingPositionReq) ([]PendingPositionDetail, error) {
 	var resp []PendingPositionDetail
-	if err := c.doer.Get(ctx, "/open/api/v2/position/pending", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/position/pending", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -31,7 +31,7 @@ type AdjustPositionMarginReq struct {
 // AdjustPositionMargin adds or removes margin.
 func (c *PositionClient) AdjustPositionMargin(ctx context.Context, req AdjustPositionMarginReq) (*PendingPositionDetail, error) {
 	var resp PendingPositionDetail
-	if err := c.doer.Post(ctx, "/open/api/v2/position/margin", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/margin", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -46,7 +46,7 @@ type PositionAdjustableMarginReq struct {
 // PositionAdjustableMargin returns the margin available to add or remove.
 func (c *PositionClient) PositionAdjustableMargin(ctx context.Context, req PositionAdjustableMarginReq) (*PositionAdjustableMarginResp, error) {
 	var resp PositionAdjustableMarginResp
-	if err := c.doer.Get(ctx, "/open/api/v2/position/margin", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/position/margin", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -67,7 +67,7 @@ type LimitClosePositionResp struct{ OrderItem }
 // LimitClosePosition submits a limit close.
 func (c *PositionClient) LimitClosePosition(ctx context.Context, req LimitClosePositionReq) (*LimitClosePositionResp, error) {
 	var resp LimitClosePositionResp
-	if err := c.doer.Post(ctx, "/open/api/v2/position/close/limit", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/close/limit", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -87,7 +87,7 @@ type MarketClosePositionResp struct{ OrderItem }
 // MarketClosePosition submits a market close.
 func (c *PositionClient) MarketClosePosition(ctx context.Context, req MarketClosePositionReq) (*MarketClosePositionResp, error) {
 	var resp MarketClosePositionResp
-	if err := c.doer.Post(ctx, "/open/api/v2/position/close/market", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/close/market", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -113,7 +113,7 @@ type StopClosePositionResp struct{}
 // StopClosePosition attaches SL/TP to an open position.
 func (c *PositionClient) StopClosePosition(ctx context.Context, req StopClosePositionReq) (*StopClosePositionResp, error) {
 	var resp StopClosePositionResp
-	if err := c.doer.Post(ctx, "/open/api/v2/position/close/stop", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/close/stop", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -134,7 +134,7 @@ type LimitAddPositionResp struct{ OrderItem }
 // LimitAddPosition submits a limit add.
 func (c *PositionClient) LimitAddPosition(ctx context.Context, req LimitAddPositionReq) (*LimitAddPositionResp, error) {
 	var resp LimitAddPositionResp
-	if err := c.doer.Post(ctx, "/open/api/v2/position/add/limit", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/add/limit", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -154,7 +154,7 @@ type MarketAddPositionResp struct{ OrderItem }
 // MarketAddPosition submits a market add.
 func (c *PositionClient) MarketAddPosition(ctx context.Context, req MarketAddPositionReq) (*MarketAddPositionResp, error) {
 	var resp MarketAddPositionResp
-	if err := c.doer.Post(ctx, "/open/api/v2/position/add/market", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/position/add/market", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -179,7 +179,7 @@ type PositionHistoryResp struct {
 // PositionHistory lists past positions.
 func (c *PositionClient) PositionHistory(ctx context.Context, req PositionHistoryReq) (*PositionHistoryResp, error) {
 	var resp PositionHistoryResp
-	if err := c.doer.Get(ctx, "/open/api/v2/position/history", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/position/history", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

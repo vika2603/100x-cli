@@ -7,6 +7,9 @@ import (
 	"github.com/vika2603/100x-cli/api/internal/transport"
 )
 
+// apiBase is the path prefix every sub-client appends its endpoints to.
+const apiBase = "/open/api/v2"
+
 // Doer is the minimal interface every sub-client uses to talk to the gateway.
 //
 // Implementations:

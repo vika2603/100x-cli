@@ -23,7 +23,7 @@ type AdjustMarketPreferenceResp struct{}
 // AdjustMarketPreference updates the per-market preference.
 func (c *SettingClient) AdjustMarketPreference(ctx context.Context, req AdjustMarketPreferenceReq) (*AdjustMarketPreferenceResp, error) {
 	var resp AdjustMarketPreferenceResp
-	if err := c.doer.Post(ctx, "/open/api/v2/setting/preference", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/setting/preference", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -37,7 +37,7 @@ type MarketPreferenceReq struct {
 // MarketPreference reads the per-market preference.
 func (c *SettingClient) MarketPreference(ctx context.Context, req MarketPreferenceReq) (*MarketPreferenceResp, error) {
 	var resp MarketPreferenceResp
-	if err := c.doer.Get(ctx, "/open/api/v2/setting/preference", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/setting/preference", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

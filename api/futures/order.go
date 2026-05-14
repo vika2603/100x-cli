@@ -28,7 +28,7 @@ type LimitOrderResp struct{ OrderItem }
 // LimitOrder submits a limit order.
 func (c *OrderClient) LimitOrder(ctx context.Context, req LimitOrderReq) (*LimitOrderResp, error) {
 	var resp LimitOrderResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/limit", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/limit", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -53,7 +53,7 @@ type MarketOrderResp struct{ OrderItem }
 // MarketOrder submits a market order.
 func (c *OrderClient) MarketOrder(ctx context.Context, req MarketOrderReq) (*MarketOrderResp, error) {
 	var resp MarketOrderResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/market", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/market", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -83,7 +83,7 @@ type StopOrderResp struct{}
 // StopOrder submits a standalone condition order.
 func (c *OrderClient) StopOrder(ctx context.Context, req StopOrderReq) (*StopOrderResp, error) {
 	var resp StopOrderResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/stop", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/stop", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -101,7 +101,7 @@ type LimitOrderCancelResp struct{ OrderItem }
 // CancelOrder cancels one regular (limit/market) order.
 func (c *OrderClient) CancelOrder(ctx context.Context, req LimitOrderCancelReq) (*LimitOrderCancelResp, error) {
 	var resp LimitOrderCancelResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/cancel", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/cancel", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -118,7 +118,7 @@ type LimitOrderCancelAllResp struct{}
 // CancelAllOrder cancels every open regular order in one market.
 func (c *OrderClient) CancelAllOrder(ctx context.Context, req LimitOrderCancelAllReq) (*LimitOrderCancelAllResp, error) {
 	var resp LimitOrderCancelAllResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/cancel/all", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/cancel/all", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -138,7 +138,7 @@ type LimitOrderCancelBatchResp struct {
 // LimitCancelOrderBatch cancels multiple regular orders.
 func (c *OrderClient) LimitCancelOrderBatch(ctx context.Context, req LimitOrderCancelBatchReq) (*LimitOrderCancelBatchResp, error) {
 	var resp LimitOrderCancelBatchResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/cancel/batch", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/cancel/batch", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -159,7 +159,7 @@ type StopOrderCancelResp struct {
 // CancelStopOrder cancels one condition order.
 func (c *OrderClient) CancelStopOrder(ctx context.Context, req StopOrderCancelReq) (*StopOrderCancelResp, error) {
 	var resp StopOrderCancelResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/stop/cancel", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/stop/cancel", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -176,7 +176,7 @@ type StopOrderCancelAllResp struct{}
 // CancelAllStopOrder cancels every condition order in one market.
 func (c *OrderClient) CancelAllStopOrder(ctx context.Context, req StopOrderCancelAllReq) (*StopOrderCancelAllResp, error) {
 	var resp StopOrderCancelAllResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/stop/cancel/all", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/stop/cancel/all", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -200,7 +200,7 @@ type PendingOrderResp struct {
 // PendingOrder lists currently open regular orders.
 func (c *OrderClient) PendingOrder(ctx context.Context, req PendingOrderReq) (*PendingOrderResp, error) {
 	var resp PendingOrderResp
-	if err := c.doer.Get(ctx, "/open/api/v2/order/pending", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/pending", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -225,7 +225,7 @@ type FinishedOrderResp struct {
 // FinishedOrder lists past regular orders within a time window.
 func (c *OrderClient) FinishedOrder(ctx context.Context, req FinishedOrderReq) (*FinishedOrderResp, error) {
 	var resp FinishedOrderResp
-	if err := c.doer.Get(ctx, "/open/api/v2/order/finished", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/finished", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -249,7 +249,7 @@ type PendingStopOrderResp struct {
 // PendingStopOrder lists currently active condition orders.
 func (c *OrderClient) PendingStopOrder(ctx context.Context, req PendingStopOrderReq) (*PendingStopOrderResp, error) {
 	var resp PendingStopOrderResp
-	if err := c.doer.Get(ctx, "/open/api/v2/order/stop/pending", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/stop/pending", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -275,7 +275,7 @@ type FinishedStopOrderResp struct {
 // FinishedStopOrder lists past condition orders within a time window.
 func (c *OrderClient) FinishedStopOrder(ctx context.Context, req FinishedStopOrderReq) (*FinishedStopOrderResp, error) {
 	var resp FinishedStopOrderResp
-	if err := c.doer.Get(ctx, "/open/api/v2/order/stop/finished", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/stop/finished", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -290,7 +290,7 @@ type OrderDetailReq struct {
 // OrderDetail fetches one regular order's full record.
 func (c *OrderClient) OrderDetail(ctx context.Context, req OrderDetailReq) (*OrderItem, error) {
 	var resp OrderItem
-	if err := c.doer.Get(ctx, "/open/api/v2/order/detail", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/detail", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -315,7 +315,7 @@ type OrderDealsResp struct {
 // OrderDeals lists the user's executed trades.
 func (c *OrderClient) OrderDeals(ctx context.Context, req OrderDealsReq) (*OrderDealsResp, error) {
 	var resp OrderDealsResp
-	if err := c.doer.Get(ctx, "/open/api/v2/order/deals", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/order/deals", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -335,7 +335,7 @@ type LimitOrderEditResp struct{ OrderItem }
 // EditLimitOrder modifies an existing limit order.
 func (c *OrderClient) EditLimitOrder(ctx context.Context, req LimitOrderEditReq) (*LimitOrderEditResp, error) {
 	var resp LimitOrderEditResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/limit/edit", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/limit/edit", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -365,7 +365,7 @@ type StopOrderEditResp struct {
 // the standalone-vs-position-attached restriction.
 func (c *OrderClient) EditStopOrder(ctx context.Context, req StopOrderEditReq) (*StopOrderEditResp, error) {
 	var resp StopOrderEditResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/stop/edit", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/stop/edit", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -391,7 +391,7 @@ type StopOrderCloseResp struct{}
 // StopOrderClose attaches SL/TP to a pending order.
 func (c *OrderClient) StopOrderClose(ctx context.Context, req StopOrderCloseReq) (*StopOrderCloseResp, error) {
 	var resp StopOrderCloseResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/close/stop", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/close/stop", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -422,7 +422,7 @@ type LimitOrderBatchResp struct {
 // LimitOrderBatch submits multiple limit orders in one request.
 func (c *OrderClient) LimitOrderBatch(ctx context.Context, req LimitOrderBatchReq) (*LimitOrderBatchResp, error) {
 	var resp LimitOrderBatchResp
-	if err := c.doer.Post(ctx, "/open/api/v2/order/limit/batch", req, &resp); err != nil {
+	if err := c.doer.Post(ctx, apiBase+"/order/limit/batch", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

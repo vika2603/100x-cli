@@ -13,7 +13,7 @@ type MarketListReq struct{}
 // MarketList lists every tradable instrument.
 func (c *MarketClient) MarketList(ctx context.Context, req MarketListReq) ([]MarketItem, error) {
 	var resp []MarketItem
-	if err := c.doer.Get(ctx, "/open/api/v2/market/list", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/list", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -25,7 +25,7 @@ type MarketStateAllReq struct{}
 // MarketStateAll returns ticker snapshots for every market.
 func (c *MarketClient) MarketStateAll(ctx context.Context, req MarketStateAllReq) ([]MarketStateItem, error) {
 	var resp []MarketStateItem
-	if err := c.doer.Get(ctx, "/open/api/v2/market/state/all", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/state/all", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -39,7 +39,7 @@ type MarketStateReq struct {
 // MarketState returns one market's ticker snapshot.
 func (c *MarketClient) MarketState(ctx context.Context, req MarketStateReq) (*MarketStateItem, error) {
 	var resp MarketStateItem
-	if err := c.doer.Get(ctx, "/open/api/v2/market/state", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/state", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -54,7 +54,7 @@ type MarketDepthReq struct {
 // MarketDepth returns the order-book snapshot.
 func (c *MarketClient) MarketDepth(ctx context.Context, req MarketDepthReq) (*MarketDepthResp, error) {
 	var resp MarketDepthResp
-	if err := c.doer.Get(ctx, "/open/api/v2/market/depth", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/depth", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -68,7 +68,7 @@ type MarketDealsReq struct {
 // MarketDeals returns the latest public trades for one market.
 func (c *MarketClient) MarketDeals(ctx context.Context, req MarketDealsReq) ([]MarketDealItem, error) {
 	var resp []MarketDealItem
-	if err := c.doer.Get(ctx, "/open/api/v2/market/deals", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/deals", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -85,7 +85,7 @@ type MarketKlineReq struct {
 // MarketKline returns candlestick history.
 func (c *MarketClient) MarketKline(ctx context.Context, req MarketKlineReq) ([]MarketKlineItem, error) {
 	var resp []MarketKlineItem
-	if err := c.doer.Get(ctx, "/open/api/v2/market/kline", req, &resp); err != nil {
+	if err := c.doer.Get(ctx, apiBase+"/market/kline", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
