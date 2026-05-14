@@ -107,6 +107,11 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 		}); err == nil {
 			resp.OrderItem = *refreshed
 		} else {
+			// Apply + Verify already confirmed SL/TP are persisted server-side.
+			// The refresh that would have fetched canonical field values failed;
+			// fall back to the requested values so the output reflects intent,
+			// and tell the user so they know the display isn't a verified read-back.
+			f.IO.Println("warning: order edited but failed to refresh order details:", err)
 			resp.StopLossPrice = want.SL.Price
 			resp.TakeProfitPrice = want.TP.Price
 		}
