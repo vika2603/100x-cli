@@ -48,6 +48,7 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.PositionID, "position-id", "", "Position ID for read mode; required when the symbol matches multiple positions")
 	c.Flags().StringVar(&opts.Add, "add", "", "Amount of isolated margin to add")
 	c.Flags().StringVar(&opts.Reduce, "reduce", "", "Amount of isolated margin to remove")
+	c.MarkFlagsMutuallyExclusive("add", "reduce")
 	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }
@@ -63,9 +64,6 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 	}
 	if err := clierr.PositiveNumber("--reduce", opts.Reduce); err != nil {
 		return err
-	}
-	if opts.Add != "" && opts.Reduce != "" {
-		return clierr.Usagef("--add and --reduce are mutually exclusive")
 	}
 	if opts.Add == "" && opts.Reduce == "" {
 		return renderMargin(ctx, f, opts.Symbol, opts.PositionID)

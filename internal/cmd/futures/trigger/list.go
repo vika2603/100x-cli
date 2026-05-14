@@ -38,6 +38,7 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 			"  100x futures trigger list BTCUSDT --finished --page-size 50\n\n" +
 			"# Extract trigger id, type, side, trigger price, and status as JSON\n" +
 			"  100x --json futures trigger list BTCUSDT --jq 'map({contract_order_id, contract_order_type, side, trigger_price, status})'",
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {

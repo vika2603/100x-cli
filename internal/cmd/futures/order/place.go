@@ -118,6 +118,8 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if err != nil {
 		return clierr.Usage(err)
 	}
+	// Defends the direct-call path (tests + future callers that bypass cobra).
+	// Cobra's MarkFlagsOneRequired catches this when invoked through the CLI.
 	if !opts.Limit && !opts.Market {
 		return clierr.Usagef("must set --limit or --market")
 	}

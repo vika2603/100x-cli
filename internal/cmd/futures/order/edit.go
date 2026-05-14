@@ -56,6 +56,8 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
 	opts.Symbol = wire.Market(opts.Symbol)
+	// Defends the direct-call path; cobra's MarkFlagRequired catches this
+	// via the CLI. clierr.PositiveNumber alone accepts empty strings.
 	if opts.Price == "" || opts.Size == "" {
 		return clierr.Usagef("order edit: --price and --size are required")
 	}
