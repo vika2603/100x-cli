@@ -30,10 +30,9 @@ type Credentials struct {
 // It wraps an *req.Client; signing parameters are added to the URL query string
 // in a BeforeRequest hook so business request bodies stay clean.
 type Client struct {
-	Endpoint string
-	Creds    Credentials
-	r        *req.Client
-	retry    RetryPolicy
+	Creds Credentials
+	r     *req.Client
+	retry RetryPolicy
 }
 
 // New constructs a transport client with sane defaults.
@@ -58,10 +57,9 @@ func New(endpoint string, creds Credentials, httpClient *http.Client, opts ...Op
 	}
 
 	c := &Client{
-		Endpoint: strings.TrimRight(endpoint, "/"),
-		Creds:    creds,
-		r:        r,
-		retry:    DefaultRetryPolicy,
+		Creds: creds,
+		r:     r,
+		retry: DefaultRetryPolicy,
 	}
 	for _, opt := range opts {
 		opt(c)
