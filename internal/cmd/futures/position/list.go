@@ -12,7 +12,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // ListOptions captures the flag-bound state of `position list`.
@@ -47,7 +46,7 @@ func NewCmdList(f *factory.Factory) *cobra.Command {
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	f := opts.Factory
 	client, err := f.Futures()
 	if err != nil {
@@ -76,7 +75,7 @@ func NewCmdHistory(f *factory.Factory) *cobra.Command {
 			"# Extract position id, side, open, close, pnl, and roe as JSON\n" +
 			"  100x --json futures position history --symbol BTCUSDT --page-size 20 --jq 'map({position_id, side, open_price, close_price, profit_real, roe})'",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			opts.Symbol = wire.Market(opts.Symbol)
+			opts.Symbol = format.Market(opts.Symbol)
 			if err := clierr.PositiveInt("--page", opts.Page); err != nil {
 				return err
 			}

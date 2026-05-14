@@ -13,7 +13,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
-	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // KlineOptions for `market kline`.
@@ -43,7 +42,7 @@ func newCmdKline(f *factory.Factory) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Symbol = wire.Market(args[0])
+			opts.Symbol = format.Market(args[0])
 			return runKline(cmd.Context(), opts)
 		},
 	}

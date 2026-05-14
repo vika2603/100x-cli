@@ -45,7 +45,7 @@ func TestGetSignsAndDecodes(t *testing.T) {
 		}
 	}
 	// The transport passes the Market field through verbatim. Symbol
-	// normalisation is the command layer's responsibility (via internal/wire).
+	// normalisation is the command layer's responsibility (via format.Market).
 	if gotQuery.Get("market") != "BTCUSDT" {
 		t.Fatalf("market=%q want BTCUSDT", gotQuery.Get("market"))
 	}

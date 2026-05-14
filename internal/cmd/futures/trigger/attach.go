@@ -11,7 +11,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/protection"
-	"github.com/vika2603/100x-cli/internal/wire"
+	"github.com/vika2603/100x-cli/internal/format"
 )
 
 // attachStop is the per-side projection of protection.Stop in the attach
@@ -124,7 +124,7 @@ func NewCmdAttachOrder(f *factory.Factory) *cobra.Command {
 }
 
 func runAttachOrder(ctx context.Context, opts *AttachOrderOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 }
 
 func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	if err := clierr.PositiveID("position-id", opts.PositionID); err != nil {
 		return err
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // PreferenceOptions captures the flag-bound state of `futures preference`.
@@ -54,7 +53,7 @@ func NewCmdPreference(f *factory.Factory) *cobra.Command {
 }
 
 func runPreference(ctx context.Context, opts *PreferenceOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveNumber("--leverage", opts.Leverage); err != nil {
 		return err

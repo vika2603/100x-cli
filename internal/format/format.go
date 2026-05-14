@@ -86,6 +86,17 @@ func StopOrderType(io *output.Renderer, t futures.StopOrderType) string {
 	return io.Accent(strings.ToUpper(t.String()))
 }
 
+// Market converts a user-supplied market symbol into the gateway wire format:
+// uppercase, with hyphens removed. Empty input is returned unchanged. CLI
+// users routinely type "btcusdt", "BTC-USDT", or "BTCUSDT"; the gateway only
+// accepts the all-uppercase, hyphen-free form.
+func Market(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(strings.ReplaceAll(s, "-", ""))
+}
+
 // Enum uppercases string-valued gateway enums for human output.
 func Enum(value string) string {
 	value = strings.TrimSpace(value)

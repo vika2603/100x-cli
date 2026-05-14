@@ -14,7 +14,6 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/protection"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // EditOptions captures the flag-bound state of `trigger edit`.
@@ -57,7 +56,7 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 }
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	if err := clierr.PositiveID("trigger-id", opts.OrderID); err != nil {
 		return err
 	}

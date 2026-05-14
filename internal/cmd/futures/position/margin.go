@@ -10,8 +10,8 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
-	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // MarginOptions captures the flag-bound state of `position margin`.
@@ -54,7 +54,7 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 }
 
 func runMargin(ctx context.Context, opts *MarginOptions) error {
-	opts.Symbol = wire.Market(opts.Symbol)
+	opts.Symbol = format.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveID("position-id", opts.PositionID); opts.PositionID != "" && err != nil {
 		return err
