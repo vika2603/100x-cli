@@ -48,7 +48,10 @@ func NewCmdMargin(f *factory.Factory) *cobra.Command {
 	c.Flags().StringVar(&opts.PositionID, "position-id", "", "Position ID for read mode; required when the symbol matches multiple positions")
 	c.Flags().StringVar(&opts.Add, "add", "", "Amount of isolated margin to add")
 	c.Flags().StringVar(&opts.Reduce, "reduce", "", "Amount of isolated margin to remove")
-	c.MarkFlagsMutuallyExclusive("add", "reduce")
+	// Mutual exclusion is enforced at runtime in runMargin.
+	// MarkFlagsMutuallyExclusive hides the whole group from flag completion the
+	// moment one is set, which makes re-editing the already-typed --add/--reduce
+	// value awkward.
 	_ = c.RegisterFlagCompletionFunc("position-id", complete.OpenPositionIDs)
 	return c
 }
