@@ -95,6 +95,16 @@ func Enum(value string) string {
 	return strings.ToUpper(value)
 }
 
+// EmptyDash replaces the gateway's blank or "-" sentinel with a visible "-".
+// The gateway returns either form for absent SL/TP prices; normalising both
+// to a single rendering keeps tables and detail views consistent.
+func EmptyDash(value string) string {
+	if value == "" || value == "-" {
+		return "-"
+	}
+	return value
+}
+
 // UnixMillis formats gateway millisecond timestamps for human tables. JSON
 // output keeps the original numeric value.
 func UnixMillis(ms int) string {

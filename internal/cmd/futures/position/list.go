@@ -130,21 +130,12 @@ func printOpen(io *output.Renderer, rows []futures.PendingPositionDetail, symbol
 			p.Leverage+"x",
 			p.Volume, p.OpenPrice, p.LiqPrice, p.MarginAmount, p.ProfitUnreal,
 			format.Percent(p.Roe),
-			emptyDash(p.StopLossPrice), emptyDash(p.TakeProfitPrice),
+			format.EmptyDash(p.StopLossPrice), format.EmptyDash(p.TakeProfitPrice),
 			format.UnixMillis(p.CreateTime),
 		)
 		out = append(out, row)
 	}
 	return io.Table(cols, out)
-}
-
-// emptyDash mirrors the same helper in the order package: replaces the
-// gateway's blank/`-` sentinel with a clearly visible `-`.
-func emptyDash(value string) string {
-	if value == "" || value == "-" {
-		return "-"
-	}
-	return value
 }
 
 func printClosed(io *output.Renderer, rows []futures.FinishedPositionDetail, symbolFiltered bool) error {

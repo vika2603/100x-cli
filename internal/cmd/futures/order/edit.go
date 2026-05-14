@@ -116,8 +116,8 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 			{Key: "Price", Value: resp.Price},
 			{Key: "Size", Value: resp.Volume},
 			{Key: "Filled", Value: resp.Filled},
-			{Key: "SL", Value: emptyDash(resp.StopLossPrice)},
-			{Key: "TP", Value: emptyDash(resp.TakeProfitPrice)},
+			{Key: "SL", Value: format.EmptyDash(resp.StopLossPrice)},
+			{Key: "TP", Value: format.EmptyDash(resp.TakeProfitPrice)},
 		})
 	})
 }

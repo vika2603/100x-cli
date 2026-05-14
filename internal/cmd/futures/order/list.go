@@ -153,19 +153,12 @@ func printOrders(io *output.Renderer, rows []futures.OrderItem, timeHeader, empt
 			o.Price,
 			o.Volume,
 			o.Filled,
-			emptyDash(o.StopLossPrice),
-			emptyDash(o.TakeProfitPrice),
+			format.EmptyDash(o.StopLossPrice),
+			format.EmptyDash(o.TakeProfitPrice),
 			o.ClientOID,
 			timeValue(o),
 		)
 		out = append(out, row)
 	}
 	return io.Table(cols, out)
-}
-
-func emptyDash(value string) string {
-	if value == "" {
-		return "-"
-	}
-	return value
 }
