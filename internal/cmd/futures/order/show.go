@@ -12,6 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // ShowOptions captures the flag-bound state of `order show`.
@@ -44,6 +45,7 @@ func NewCmdShow(f *factory.Factory) *cobra.Command {
 }
 
 func runShow(ctx context.Context, opts *ShowOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveID("order-id", opts.OrderID); err != nil {
 		return err

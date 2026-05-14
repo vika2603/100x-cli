@@ -11,6 +11,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 func newCmdDeals(f *factory.Factory) *cobra.Command {
@@ -33,7 +34,7 @@ func newCmdDeals(f *factory.Factory) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			symbol = args[0]
+			symbol = wire.Market(args[0])
 			if err := clierr.PositiveInt("--limit", limit); err != nil {
 				return err
 			}

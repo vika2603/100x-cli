@@ -12,6 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/exit"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // CancelOptions captures the flag-bound state of `order cancel`.
@@ -49,6 +50,7 @@ type cancelResult struct {
 }
 
 func runCancel(ctx context.Context, opts *CancelOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	for _, id := range opts.OrderIDs {
 		if err := clierr.PositiveID("order-id", id); err != nil {

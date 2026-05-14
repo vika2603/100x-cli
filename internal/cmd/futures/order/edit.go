@@ -14,6 +14,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/protection"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // EditOptions captures the flag-bound state of `order edit`.
@@ -54,6 +55,7 @@ func NewCmdEdit(f *factory.Factory) *cobra.Command {
 }
 
 func runEdit(ctx context.Context, opts *EditOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	if opts.Price == "" || opts.Size == "" {
 		return clierr.Usagef("order edit: --price and --size are required")
 	}

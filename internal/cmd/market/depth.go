@@ -8,6 +8,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // DepthOptions for `market depth`.
@@ -38,7 +39,7 @@ func newCmdDepth(f *factory.Factory) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.SymbolArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Symbol = args[0]
+			opts.Symbol = wire.Market(args[0])
 			if err := clierr.PositiveInt("--limit", opts.Limit); err != nil {
 				return err
 			}

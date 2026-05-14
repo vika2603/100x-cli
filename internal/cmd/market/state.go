@@ -11,6 +11,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // StateOptions for `market state`.
@@ -48,6 +49,7 @@ func newCmdState(f *factory.Factory) *cobra.Command {
 }
 
 func runState(ctx context.Context, opts *StateOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	client, err := f.Futures()
 	if err != nil {

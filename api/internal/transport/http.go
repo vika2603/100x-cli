@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -109,7 +108,6 @@ func (e *APIError) Error() string {
 // (transport errors and retryable HTTP statuses) are retried per the
 // resolved RetryPolicy; non-zero envelope codes are not.
 func (c *Client) Get(ctx context.Context, path string, in, out any) error {
-	in = normalizeMarketFields(in)
 	policy := retryPolicyFromCtx(ctx, c.retry)
 	tries := uint(max(policy.MaxAttempts, 1))
 
@@ -152,7 +150,6 @@ func (c *Client) Get(ctx context.Context, path string, in, out any) error {
 
 // Post sends a signed POST with `in` as the JSON body.
 func (c *Client) Post(ctx context.Context, path string, in, out any) error {
-	in = normalizeMarketFields(in)
 	r := c.r.R().SetContext(ctx)
 	if in != nil {
 		r.SetBody(in)
@@ -183,39 +180,6 @@ func decodeEnvelope(raw []byte, status int, out any) error {
 		return fmt.Errorf("decode data: %w; data=%s", err, truncate(env.Data))
 	}
 	return nil
-}
-
-func normalizeMarketFields(in any) any {
-	if in == nil {
-		return nil
-	}
-	v := reflect.ValueOf(in)
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return in
-		}
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Struct {
-		return in
-	}
-	out := reflect.New(v.Type()).Elem()
-	out.Set(v)
-	for i := 0; i < out.NumField(); i++ {
-		field := out.Type().Field(i)
-		if field.Name != "Market" {
-			continue
-		}
-		fv := out.Field(i)
-		if fv.Kind() == reflect.String && fv.CanSet() {
-			fv.SetString(wireMarket(fv.String()))
-		}
-	}
-	return out.Interface()
-}
-
-func wireMarket(s string) string {
-	return strings.ToUpper(strings.ReplaceAll(s, "-", ""))
 }
 
 func newNonce() (string, error) {

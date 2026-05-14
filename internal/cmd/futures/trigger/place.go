@@ -9,6 +9,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/clierr"
 	"github.com/vika2603/100x-cli/internal/cmd/factory"
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // PlaceOptions captures the flag-bound state of `trigger place`.
@@ -61,6 +62,7 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 }
 
 func runPlace(ctx context.Context, opts *PlaceOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
 		return err
 	}

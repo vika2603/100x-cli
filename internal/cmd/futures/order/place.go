@@ -15,6 +15,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // PlaceOptions captures the flag-bound state of `order place`.
@@ -88,6 +89,7 @@ func NewCmdPlace(f *factory.Factory) *cobra.Command {
 
 // runPlace is the pure logic — no cobra dependency, callable from tests.
 func runPlace(ctx context.Context, opts *PlaceOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	if err := clierr.PositiveNumber("--size", opts.Size); err != nil {
 		return err
 	}

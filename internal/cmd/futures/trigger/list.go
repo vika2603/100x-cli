@@ -12,6 +12,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/cmd/futures/complete"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // ListOptions captures the flag-bound state of `trigger list`.
@@ -56,6 +57,7 @@ func addListFlags(c *cobra.Command, opts *ListOptions) {
 }
 
 func runList(ctx context.Context, opts *ListOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveInt("--page", opts.Page); err != nil {
 		return err

@@ -15,6 +15,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/exit"
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // AddOptions captures the flag-bound state of `position add`.
@@ -57,6 +58,7 @@ func NewCmdAdd(f *factory.Factory) *cobra.Command {
 }
 
 func runAdd(ctx context.Context, opts *AddOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveID("position-id", opts.PositionID); opts.PositionID != "" && err != nil {
 		return err

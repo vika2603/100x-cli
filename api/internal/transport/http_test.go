@@ -33,7 +33,7 @@ func TestGetSignsAndDecodes(t *testing.T) {
 	var out struct {
 		Hello string `json:"hello"`
 	}
-	if err := c.Get(context.Background(), "/p", req{Market: "BTC-USDT"}, &out); err != nil {
+	if err := c.Get(context.Background(), "/p", req{Market: "BTCUSDT"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if gotPath != "/p" {
@@ -44,6 +44,8 @@ func TestGetSignsAndDecodes(t *testing.T) {
 			t.Fatalf("missing auth param %s", k)
 		}
 	}
+	// The transport passes the Market field through verbatim. Symbol
+	// normalisation is the command layer's responsibility (via internal/wire).
 	if gotQuery.Get("market") != "BTCUSDT" {
 		t.Fatalf("market=%q want BTCUSDT", gotQuery.Get("market"))
 	}
@@ -70,7 +72,7 @@ func TestPostSendsBodyAndAuth(t *testing.T) {
 		Market   string `json:"market,omitempty"`
 		Quantity string `json:"quantity,omitempty"`
 	}
-	if err := c.Post(context.Background(), "/p", body{Market: "BTC-USDT", Quantity: "1"}, nil); err != nil {
+	if err := c.Post(context.Background(), "/p", body{Market: "BTCUSDT", Quantity: "1"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, k := range []string{"client_id", "nonce", "ts", "sign"} {

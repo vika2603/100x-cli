@@ -11,6 +11,7 @@ import (
 
 	"github.com/vika2603/100x-cli/api/futures"
 	"github.com/vika2603/100x-cli/internal/session"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 const completionTimeout = 2 * time.Second
@@ -125,6 +126,7 @@ func ActiveTriggerIDsFor(symbol string) cobra.CompletionFunc {
 }
 
 func completeOpenOrderIDs(cmd *cobra.Command, symbol, toComplete string) ([]string, cobra.ShellCompDirective) {
+	symbol = wire.Market(symbol)
 	client, ctx, cancel, ok := privateClient(cmd)
 	if !ok {
 		return noFiles()
@@ -145,6 +147,7 @@ func completeOpenOrderIDs(cmd *cobra.Command, symbol, toComplete string) ([]stri
 }
 
 func completeOpenPositionIDs(cmd *cobra.Command, symbol, toComplete string) ([]string, cobra.ShellCompDirective) {
+	symbol = wire.Market(symbol)
 	client, ctx, cancel, ok := privateClient(cmd)
 	if !ok {
 		return noFiles()
@@ -163,6 +166,7 @@ func completeOpenPositionIDs(cmd *cobra.Command, symbol, toComplete string) ([]s
 }
 
 func completeActiveTriggerIDs(cmd *cobra.Command, symbol, toComplete string) ([]string, cobra.ShellCompDirective) {
+	symbol = wire.Market(symbol)
 	client, ctx, cancel, ok := privateClient(cmd)
 	if !ok {
 		return noFiles()

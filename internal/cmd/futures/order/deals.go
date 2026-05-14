@@ -13,6 +13,7 @@ import (
 	"github.com/vika2603/100x-cli/internal/format"
 	"github.com/vika2603/100x-cli/internal/output"
 	"github.com/vika2603/100x-cli/internal/timeexpr"
+	"github.com/vika2603/100x-cli/internal/wire"
 )
 
 // DealsOptions captures the flag-bound state of `order deals`.
@@ -57,6 +58,7 @@ func NewCmdDeals(f *factory.Factory) *cobra.Command {
 }
 
 func runDeals(ctx context.Context, opts *DealsOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	if err := clierr.PositiveInt("--page", opts.Page); err != nil {
 		return err
