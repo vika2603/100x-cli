@@ -2,6 +2,7 @@ package futures
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/vika2603/100x-cli/api/internal/transport"
 )
@@ -10,18 +11,28 @@ import (
 // Re-exported so consumers do not need to import the transport package.
 type APIError = transport.APIError
 
+// Gateway envelope codes used to classify APIError values into the
+// auth / rate-limit / server / business categories. Update these slices
+// when the gateway adds or renumbers codes; the IsXxx helpers below pick
+// them up automatically.
+var (
+	// authCodes: signature, nonce, client_id, permission, key state failures.
+	authCodes = []int{10003, 10004, 10009, 10024, 10025}
+
+	// rateLimitCodes: per-account or per-IP throttling, queue-full.
+	rateLimitCodes = []int{10006, 10015}
+
+	// serverCodes: matching-engine / backend internal failures.
+	serverCodes = []int{10001, 10018, 10019}
+)
+
 // IsAuth reports whether err is one of the documented credential failures.
 func IsAuth(err error) bool {
 	var ae *APIError
 	if !errors.As(err, &ae) {
 		return false
 	}
-	switch ae.Code {
-	case 10003, 10004, 10009, 10024, 10025:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(authCodes, ae.Code)
 }
 
 // IsRateLimited reports whether err is a retryable rate-limit/capacity error.
@@ -30,12 +41,7 @@ func IsRateLimited(err error) bool {
 	if !errors.As(err, &ae) {
 		return false
 	}
-	switch ae.Code {
-	case 10006, 10015:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(rateLimitCodes, ae.Code)
 }
 
 // IsServer reports whether err is a backend/engine failure.
@@ -44,12 +50,7 @@ func IsServer(err error) bool {
 	if !errors.As(err, &ae) {
 		return false
 	}
-	switch ae.Code {
-	case 10001, 10018, 10019:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(serverCodes, ae.Code)
 }
 
 // IsBusiness reports whether err is a backend rejection of a well-formed
