@@ -115,7 +115,7 @@ func confirmCancelOrders(f *factory.Factory, symbol string, orderIDs []string) e
 		return err
 	}
 	if !ok {
-		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+		return exit.ErrCancelled
 	}
 	return nil
 }
@@ -155,7 +155,7 @@ func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
 		return err
 	}
 	if !ok {
-		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+		return exit.ErrCancelled
 	}
 	client, err := f.Futures()
 	if err != nil {

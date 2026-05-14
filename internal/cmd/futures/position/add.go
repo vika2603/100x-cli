@@ -81,7 +81,7 @@ func runAdd(ctx context.Context, opts *AddOptions) error {
 		return err
 	}
 	if !ok {
-		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+		return exit.ErrCancelled
 	}
 	client, err := f.Futures()
 	if err != nil {

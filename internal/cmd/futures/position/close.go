@@ -113,7 +113,7 @@ func runClose(ctx context.Context, opts *CloseOptions) error {
 			return err
 		}
 		if !ok {
-			return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+			return exit.ErrCancelled
 		}
 		if opts.Size != "" {
 			f.IO.Println("warning: --size is ignored for market position close; server closes the full position")

@@ -5,6 +5,13 @@
 // constant here and mapping it from main.
 package exit
 
+import "errors"
+
+// ErrCancelled is the canonical "user declined a destructive prompt" error.
+// Returning it from a verb maps to the Aborted exit code and the "cancelled"
+// stable code.
+var ErrCancelled = NewCodedError(Aborted, "cancelled", errors.New("cancelled by user"))
+
 // CodedError carries an explicit CLI exit-code classification across package
 // boundaries while preserving the wrapped cause for error messages.
 type CodedError struct {

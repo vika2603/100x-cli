@@ -126,7 +126,7 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 		return err
 	}
 	if !ok {
-		return exit.NewCodedError(exit.Aborted, "cancelled", fmt.Errorf("cancelled by user"))
+		return exit.ErrCancelled
 	}
 	client, err := f.Futures()
 	if err != nil {
