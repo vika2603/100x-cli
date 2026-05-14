@@ -1,5 +1,10 @@
 package futures
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Side identifies the trade direction. Wire format: int.
 type Side int
 
@@ -18,6 +23,18 @@ func (s Side) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// ParseSide maps a case-insensitive textual side ("buy"/"b" or "sell"/"s")
+// to a Side value. Empty input is rejected.
+func ParseSide(s string) (Side, error) {
+	switch strings.ToUpper(s) {
+	case "BUY", "B":
+		return SideBuy, nil
+	case "SELL", "S":
+		return SideSell, nil
+	}
+	return 0, fmt.Errorf("unknown side %q (want buy|sell)", s)
 }
 
 // TIF is the order time-in-force. Wire format: int.
@@ -44,6 +61,23 @@ func (t TIF) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// ParseTIF maps a case-insensitive textual time-in-force to a TIF value.
+// Empty input defaults to GTC. POST_ONLY accepts "POST_ONLY", "POSTONLY",
+// or "PO".
+func ParseTIF(s string) (TIF, error) {
+	switch strings.ToUpper(s) {
+	case "", "GTC":
+		return TIFGTC, nil
+	case "FOK":
+		return TIFFOK, nil
+	case "IOC":
+		return TIFIOC, nil
+	case "POST_ONLY", "POSTONLY", "PO":
+		return TIFPostOnly, nil
+	}
+	return 0, fmt.Errorf("unknown --tif %q (want GTC|FOK|IOC|POST_ONLY)", s)
 }
 
 // OrderStatus is the lifecycle state of a regular order. Wire format: int.
@@ -154,6 +188,20 @@ func (t StopTriggerType) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// ParseStopTriggerType maps a case-insensitive feed name ("last"/"index"/
+// "mark") to a StopTriggerType. Empty input defaults to Last.
+func ParseStopTriggerType(s string) (StopTriggerType, error) {
+	switch strings.ToUpper(s) {
+	case "", "LAST":
+		return StopTriggerTypeLast, nil
+	case "INDEX":
+		return StopTriggerTypeIndex, nil
+	case "MARK":
+		return StopTriggerTypeMark, nil
+	}
+	return 0, fmt.Errorf("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }
 
 // PositionType is cross vs isolated margining. Wire format: int.

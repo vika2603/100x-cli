@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -71,25 +70,13 @@ func runPlace(ctx context.Context, opts *PlaceOptions) error {
 	if err := clierr.PositiveNumber("--limit-price", opts.LimitPrice); err != nil {
 		return err
 	}
-	var side futures.Side
-	switch strings.ToUpper(opts.Side) {
-	case "BUY", "B":
-		side = futures.SideBuy
-	case "SELL", "S":
-		side = futures.SideSell
-	default:
-		return clierr.Usagef("unknown side %q (want buy|sell)", opts.Side)
+	side, err := futures.ParseSide(opts.Side)
+	if err != nil {
+		return clierr.Usage(err)
 	}
-	var priceType futures.StopTriggerType
-	switch strings.ToUpper(opts.TriggerBy) {
-	case "", "LAST":
-		priceType = futures.StopTriggerTypeLast
-	case "INDEX":
-		priceType = futures.StopTriggerTypeIndex
-	case "MARK":
-		priceType = futures.StopTriggerTypeMark
-	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
+	priceType, err := futures.ParseStopTriggerType(opts.TriggerBy)
+	if err != nil {
+		return clierr.Usage(err)
 	}
 	f := opts.Factory
 	client, err := f.Futures()

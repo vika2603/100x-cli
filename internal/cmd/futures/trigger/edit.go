@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -63,16 +62,9 @@ func runEdit(ctx context.Context, opts *EditOptions) error {
 	if err := clierr.PositiveNumber("--trigger-price", opts.TriggerPrice); err != nil {
 		return err
 	}
-	var priceType futures.StopTriggerType
-	switch strings.ToUpper(opts.TriggerBy) {
-	case "", "LAST":
-		priceType = futures.StopTriggerTypeLast
-	case "INDEX":
-		priceType = futures.StopTriggerTypeIndex
-	case "MARK":
-		priceType = futures.StopTriggerTypeMark
-	default:
-		return clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", opts.TriggerBy)
+	priceType, err := futures.ParseStopTriggerType(opts.TriggerBy)
+	if err != nil {
+		return clierr.Usage(err)
 	}
 	f := opts.Factory
 	client, err := f.Futures()

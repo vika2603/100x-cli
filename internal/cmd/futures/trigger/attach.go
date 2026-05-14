@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -319,36 +318,23 @@ func changedSideLabel(slPrice, tpPrice string) string {
 // flag set: a per-side override wins when given, otherwise both sides
 // fall back to the common --trigger-by value.
 func parseSideTriggerBys(common, slOverride, tpOverride string) (futures.StopTriggerType, futures.StopTriggerType, error) {
-	commonType, err := parseTriggerBy(common)
+	commonType, err := futures.ParseStopTriggerType(common)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, clierr.Usage(err)
 	}
 	slType := commonType
 	if slOverride != "" {
-		slType, err = parseTriggerBy(slOverride)
+		slType, err = futures.ParseStopTriggerType(slOverride)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, clierr.Usage(err)
 		}
 	}
 	tpType := commonType
 	if tpOverride != "" {
-		tpType, err = parseTriggerBy(tpOverride)
+		tpType, err = futures.ParseStopTriggerType(tpOverride)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, clierr.Usage(err)
 		}
 	}
 	return slType, tpType, nil
-}
-
-// parseTriggerBy maps one trigger-by value to the gateway enum.
-func parseTriggerBy(s string) (futures.StopTriggerType, error) {
-	switch strings.ToUpper(s) {
-	case "", "LAST":
-		return futures.StopTriggerTypeLast, nil
-	case "INDEX":
-		return futures.StopTriggerTypeIndex, nil
-	case "MARK":
-		return futures.StopTriggerTypeMark, nil
-	}
-	return 0, clierr.Usagef("unknown trigger price type %q (want LAST|INDEX|MARK)", s)
 }
