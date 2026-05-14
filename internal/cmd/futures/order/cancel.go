@@ -76,7 +76,7 @@ func runCancel(ctx context.Context, opts *CancelOptions) error {
 			return f.IO.Resultln("Cancelled", resp.OrderID)
 		})
 	}
-	resp, err := client.Order.LimitCancelOrderBatch(ctx, futures.LimitOrderCancelBatchReq{
+	resp, err := client.Order.CancelOrderBatch(ctx, futures.LimitOrderCancelBatchReq{
 		Market: opts.Symbol, OrderIDs: strings.Join(opts.OrderIDs, ","),
 	})
 	if err != nil {

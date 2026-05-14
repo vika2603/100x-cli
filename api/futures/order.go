@@ -135,8 +135,8 @@ type LimitOrderCancelBatchResp struct {
 	OrderIDs []string `url:"order_ids" json:"order_ids"`
 }
 
-// LimitCancelOrderBatch cancels multiple regular orders.
-func (c *OrderClient) LimitCancelOrderBatch(ctx context.Context, req LimitOrderCancelBatchReq) (*LimitOrderCancelBatchResp, error) {
+// CancelOrderBatch cancels multiple regular orders.
+func (c *OrderClient) CancelOrderBatch(ctx context.Context, req LimitOrderCancelBatchReq) (*LimitOrderCancelBatchResp, error) {
 	var resp LimitOrderCancelBatchResp
 	if err := c.doer.Post(ctx, apiBase+"/order/cancel/batch", req, &resp); err != nil {
 		return nil, err
