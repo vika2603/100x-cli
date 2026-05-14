@@ -222,6 +222,7 @@ func NewCmdAttachPosition(f *factory.Factory) *cobra.Command {
 }
 
 func runAttachPosition(ctx context.Context, opts *AttachPositionOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	if err := clierr.PositiveID("position-id", opts.PositionID); err != nil {
 		return err
 	}

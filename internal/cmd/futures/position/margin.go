@@ -65,6 +65,11 @@ func runMargin(ctx context.Context, opts *MarginOptions) error {
 	if err := clierr.PositiveNumber("--reduce", opts.Reduce); err != nil {
 		return err
 	}
+	// Defends the direct-call path; cobra's MarkFlagsMutuallyExclusive
+	// catches this via the CLI.
+	if opts.Add != "" && opts.Reduce != "" {
+		return clierr.Usagef("--add and --reduce are mutually exclusive")
+	}
 	if opts.Add == "" && opts.Reduce == "" {
 		return renderMargin(ctx, f, opts.Symbol, opts.PositionID)
 	}

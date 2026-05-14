@@ -150,6 +150,7 @@ func NewCmdCancelAll(f *factory.Factory) *cobra.Command {
 }
 
 func runCancelAll(ctx context.Context, opts *CancelAllOptions) error {
+	opts.Symbol = wire.Market(opts.Symbol)
 	f := opts.Factory
 	ok, err := f.ConfirmDestructive(
 		fmt.Sprintf("Cancel every open order in %s?", opts.Symbol))
